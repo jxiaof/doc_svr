@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大模型推理性能评测报告</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="apple-touch-icon" href="./favicon.svg" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f8fc;
+      --bg-alt: #edf3f9;
+      --surface: #ffffff;
+      --surface-soft: #f8fbfe;
+      --surface-strong: #e9f1f8;
+      --border: #d7e4f0;
+      --text: #17324d;
+      --text-muted: #5c758e;
+      --accent: #0777e0;
+      --accent-strong: #0757ea;
+      --accent-soft: #dceaf8;
+      --accent-soft-strong: #bcd6ee;
+      --success: #2b6f57;
+      --warning: #8c6a18;
+      --danger: #b44848;
+      --shadow: 0 16px 34px rgba(13, 59, 102, 0.08);
+      --radius: 16px;
+
+      --h800: #0b66c3;
+      --pro6000: #2b7fc4;
+      --5090: #4b97c8;
+      --6000d: #7eaeca;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(11, 102, 195, 0.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(43, 127, 196, 0.08), transparent 28%),
+        linear-gradient(180deg, #f9fcff 0%, var(--bg) 24%, var(--bg-alt) 100%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+      background-size: 24px 24px;
+      opacity: 0.2;
+    }
+
+    .page-shell {
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      padding: 34px 44px 22px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(239, 247, 255, 0.96));
+      border-bottom: 1px solid rgba(183, 205, 225, 0.65);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 28px rgba(11, 74, 140, 0.04);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .header-left {
+      max-width: 760px;
+    }
+
+    .header-title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      box-shadow: 0 14px 28px rgba(7, 87, 234, 0.16);
+      flex-shrink: 0;
+    }
+
+    .header-left .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(11, 102, 195, 0.08);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .header-left h1 {
+      font-size: 2rem;
+      line-height: 1.2;
+      letter-spacing: 0.01em;
+      margin-bottom: 10px;
+      color: #113354;
+    }
+
+    .header-left p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 680px;
+    }
+
+    .header-right {
+      min-width: 280px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .badge-label {
+      display: block;
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .badge-value {
+      font-size: 0.95rem;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .nav-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding: 0 24px;
+      margin-top: 14px;
+    }
+
+    .nav {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(183, 205, 225, 0.7);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .nav-tab {
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .nav-tab:hover {
+      color: var(--accent);
+      background: rgba(11, 102, 195, 0.06);
+      border-color: rgba(11, 102, 195, 0.12);
+    }
+
+    .nav-tab.active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+      box-shadow: 0 12px 24px rgba(11, 102, 195, 0.18);
+    }
+
+    .main {
+      padding: 28px 24px 48px;
+    }
+
+    .main-inner {
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    .section {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-head {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #12395d;
+      margin-bottom: 6px;
+    }
+
+    .section-desc {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      max-width: 860px;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 251, 255, 0.98));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-pad {
+      padding: 22px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 255, 0.98));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: var(--card-color, var(--accent));
+    }
+
+    .card-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .card-value {
+      font-size: 1.9rem;
+      line-height: 1.1;
+      font-weight: 800;
+      margin: 8px 0 6px;
+      color: #163a5d;
+    }
+
+    .card-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .card-rank {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .rank-1 { background: rgba(11, 102, 195, 0.12); color: var(--accent); }
+    .rank-2 { background: rgba(86, 129, 169, 0.12); color: #496b89; }
+    .rank-3 { background: rgba(126, 174, 202, 0.2); color: #4a7999; }
+    .rank-4 { background: rgba(180, 72, 72, 0.12); color: var(--danger); }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .hero-block {
+      padding: 26px;
+      min-height: 220px;
+    }
+
+    .hero-block h2 {
+      font-size: 1.6rem;
+      line-height: 1.25;
+      margin-bottom: 10px;
+      color: #11385e;
+    }
+
+    .hero-block p {
+      color: var(--text-muted);
+      max-width: 820px;
+      margin-bottom: 18px;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-content: start;
+    }
+
+    .mini-kpi {
+      padding: 16px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(246, 250, 255, 1), rgba(233, 241, 248, 0.75));
+      border: 1px solid var(--border);
+    }
+
+    .mini-kpi .label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .mini-kpi .value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #153a5e;
+      line-height: 1.15;
+    }
+
+    .mini-kpi .sub {
+      display: block;
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .tool-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border: none;
+      font-weight: 700;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(12, 71, 132, 0.12);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+      color: #fff;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #2f7f61 0%, #245f4a 100%);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #bc5555 0%, #9b3f3f 100%);
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .report-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+      gap: 18px;
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #14385b;
+      margin-bottom: 8px;
+    }
+
+    .panel-subtitle {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .insight-list,
+    .info-list {
+      list-style: none;
+      display: grid;
+      gap: 12px;
+    }
+
+    .insight-list li,
+    .info-list li {
+      padding: 14px 14px 14px 16px;
+      border-radius: 14px;
+      background: rgba(243, 248, 253, 0.92);
+      border: 1px solid rgba(215, 228, 240, 0.92);
+      color: var(--text);
+    }
+
+    .insight-list strong,
+    .info-list strong {
+      display: block;
+      font-size: 0.9rem;
+      color: #14395d;
+      margin-bottom: 4px;
+    }
+
+    .report-body {
+      display: grid;
+      gap: 16px;
+    }
+
+    .report-block {
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(248, 251, 254, 0.92);
+      border: 1px solid rgba(215, 228, 240, 0.92);
+    }
+
+    .report-block h4 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: #123b61;
+    }
+
+    .report-block p,
+    .report-block li {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .report-block ul,
+    .report-block ol {
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .summary-table table,
+    .table-wrap table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+
+    .summary-table {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: 24px;
+    }
+
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .table-header h3 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #14395f;
+    }
+
+    .table-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.79rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+      font-weight: 700;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: rgba(11, 102, 195, 0.1);
+      border-color: rgba(11, 102, 195, 0.22);
+      color: var(--accent);
+    }
+
+    th,
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(215, 228, 240, 0.84);
+      vertical-align: middle;
+    }
+
+    th {
+      text-align: left;
+      color: var(--text-muted);
+      font-weight: 700;
+      background: rgba(240, 246, 252, 0.95);
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(239, 246, 253, 0.78); }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .chart-box {
+      padding: 20px;
+    }
+
+    .chart-box h3 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #153b61;
+      margin-bottom: 4px;
+    }
+
+    .chart-box p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .chart-box canvas { max-height: 290px; }
+
+    .dynamic-task-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .markdown-panel {
+      margin-bottom: 24px;
+    }
+
+    .markdown-host {
+      border-radius: 18px;
+      border: 1px solid rgba(215, 228, 240, 0.92);
+      background: rgba(250, 252, 255, 0.95);
+      padding: 22px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .markdown-body {
+      color: var(--text);
+      background: transparent !important;
+      font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.75;
+    }
+
+    .markdown-body h1,
+    .markdown-body h2,
+    .markdown-body h3,
+    .markdown-body h4 {
+      color: #12395d;
+      border-bottom-color: rgba(215, 228, 240, 0.92);
+    }
+
+    .markdown-body table {
+      display: table;
+      width: 100%;
+      min-width: 720px;
+    }
+
+    .markdown-body blockquote {
+      color: var(--text-muted);
+      border-left-color: var(--accent);
+      background: rgba(7, 119, 224, 0.04);
+      padding: 8px 16px;
+      border-radius: 0 12px 12px 0;
+    }
+
+    .markdown-body code {
+      background: rgba(7, 119, 224, 0.08);
+      color: #0d4e93;
+    }
+
+    .markdown-body pre {
+      background: #0f2740;
+    }
+
+    .markdown-body ul,
+    .markdown-body ol {
+      padding-left: 24px;
+    }
+
+    .gpu-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95);
+    }
+
+    .metric-best { color: var(--success); font-weight: 800; }
+    .metric-worst { color: var(--danger); font-weight: 700; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .tag-t2i { background: rgba(11, 102, 195, 0.1); color: var(--accent); }
+    .tag-t2v { background: rgba(43, 127, 196, 0.1); color: #1d6cae; }
+    .tag-i2v { background: rgba(126, 174, 202, 0.22); color: #4d7b99; }
+
+    .conclusion-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .conclusion-card {
+      padding: 20px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.98));
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--card-color, var(--accent));
+      box-shadow: var(--shadow);
+    }
+
+    .conclusion-card h4 {
+      font-size: 0.98rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #143b60;
+    }
+
+    .conclusion-card ul {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .conclusion-card li {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      padding-left: 14px;
+      position: relative;
+    }
+
+    .conclusion-card li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.72em;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--card-color, var(--accent));
+      transform: translateY(-50%);
+    }
+
+    .score-bar-wrap {
+      width: 100%;
+      background: rgba(229, 238, 246, 0.88);
+      border-radius: 999px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .score-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--bar-color, var(--accent)) 0%, rgba(11, 102, 195, 0.72) 100%);
+    }
+
+    .dm-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+      margin-bottom: 18px;
+    }
+
+    .dm-box {
+      padding: 20px;
+    }
+
+    .dm-box h3 {
+      font-size: 0.96rem;
+      font-weight: 800;
+      margin-bottom: 14px;
+      color: #143b60;
+    }
+
+    .module-caption {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-row.cols3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 0.84rem;
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(11, 102, 195, 0.38);
+      box-shadow: 0 0 0 3px rgba(11, 102, 195, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 240px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.78rem;
+    }
+
+    .lock-shell {
+      display: grid;
+      gap: 16px;
+    }
+
+    .lock-panel {
+      padding: 22px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      border: 1px solid transparent;
+    }
+
+    .status-pill.locked {
+      background: rgba(188, 85, 85, 0.1);
+      color: var(--danger);
+      border-color: rgba(188, 85, 85, 0.18);
+    }
+
+    .status-pill.unlocked {
+      background: rgba(47, 127, 97, 0.12);
+      color: var(--success);
+      border-color: rgba(47, 127, 97, 0.2);
+    }
+
+    .hidden { display: none !important; }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      margin-top: 10px;
+      border: 1px solid transparent;
+    }
+
+    .alert-ok {
+      background: rgba(47, 127, 97, 0.1);
+      border-color: rgba(47, 127, 97, 0.2);
+      color: var(--success);
+    }
+
+    .alert-err {
+      background: rgba(188, 85, 85, 0.1);
+      border-color: rgba(188, 85, 85, 0.2);
+      color: var(--danger);
+    }
+
+    .empty-state {
+      padding: 24px;
+      border-radius: 16px;
+      background: rgba(247, 250, 253, 0.9);
+      border: 1px dashed var(--border);
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    .empty-row {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 24px;
+      font-size: 0.84rem;
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 1100px) {
+      .hero-grid,
+      .overview-grid,
+      .report-layout,
+      .module-grid,
+      .dm-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-right {
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .header { padding: 24px 18px 18px; }
+      .nav-wrap { padding: 0 16px; }
+      .main { padding: 20px 16px 36px; }
+      .cards,
+      .chart-grid { grid-template-columns: 1fr; }
+      .dynamic-task-grid { grid-template-columns: 1fr; }
+      .form-row,
+      .form-row.cols3 { grid-template-columns: 1fr; }
+      .header-right { grid-template-columns: 1fr; }
+      .hero-metrics { grid-template-columns: 1fr; }
+      .hero-block,
+      .panel-pad,
+      .chart-box,
+      .dm-box,
+      .lock-panel,
+      .markdown-host { padding: 18px; }
+      .hero-block h2 { font-size: 1.35rem; }
+      .header-title-row { gap: 12px; }
+      .brand-mark { width: 46px; height: 46px; border-radius: 14px; }
+      .nav {
+        gap: 8px;
+        padding: 10px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scroll-snap-type: x proximity;
+      }
+      .nav-tab {
+        flex: 0 0 auto;
+        text-align: center;
+        scroll-snap-align: start;
+      }
+      .summary-table table,
+      .table-wrap table { min-width: 720px; }
+      .markdown-body { font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="header">
+      <div class="header-left">
+        <div class="header-title-row">
+          <img class="brand-mark" src="./favicon.svg" alt="Benchmark Icon" />
+          <div>
+            <div class="eyebrow">Benchmark Executive Brief</div>
+            <h1>大模型推理性能评测报告</h1>
+          </div>
+        </div>
+        <p id="headerDesc">多 GPU 平台 · 文生图 / 文生视频 · Serving Benchmark</p>
+      </div>
+      <div class="header-right">
+        <div class="badge">
+          <span class="badge-label">数据集</span>
+          <span class="badge-value" id="datasetBadge">vbench</span>
+        </div>
+        <div class="badge">
+          <span class="badge-label">测试工具</span>
+          <span class="badge-value" id="toolBadge">sglang</span>
+        </div>
+        <div class="badge">
+          <span class="badge-label">更新时间</span>
+          <span class="badge-value" id="updateBadge">—</span>
+        </div>
+        <div class="badge">
+          <span class="badge-label">结果规模</span>
+          <span class="badge-value" id="coverageBadge">—</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="nav-wrap">
+      <nav class="nav">
+        <div class="nav-tab active" data-tab="report">报告总览</div>
+        <div class="nav-tab" data-tab="tti">文生图 (T2I)</div>
+        <div class="nav-tab" data-tab="video">生视频 (T2V / I2V)</div>
+        <div class="nav-tab" data-tab="conclusion">结论建议</div>
+        <div class="nav-tab" data-tab="all">全部数据</div>
+        <div class="nav-tab" data-tab="manage">数据管理</div>
+      </nav>
+    </div>
+
+    <main class="main">
+      <div class="main-inner">
+        <section class="section active" id="tab-report">
+          <div class="section-head">
+            <div>
+              <div class="section-title">管理层汇报页</div>
+              <div class="section-desc">汇总核心结论、关键指标和选型建议，适合直接向领导或项目负责人展示。页面同时提供一键复制测试报告与测试数据能力。</div>
+            </div>
+          </div>
+
+          <div class="hero-grid">
+            <div class="panel hero-block">
+              <h2 id="reportHeadline">本轮测试显示，H800 仍是高并发与视频生成的最优平台，RTX Pro 6000 是工作站部署的最佳平衡点。</h2>
+              <p id="reportHeroText">正在生成汇总结论...</p>
+              <div class="tool-row">
+                <button class="btn btn-primary" onclick="copyReport()">复制测试报告</button>
+                <button class="btn btn-outline" onclick="copyData()">复制测试数据</button>
+                <button class="btn btn-outline" onclick="downloadJSON()">下载 JSON</button>
+              </div>
+              <div id="report-alert"></div>
+            </div>
+
+            <div class="panel hero-block">
+              <div class="hero-metrics" id="report-kpis"></div>
+            </div>
+          </div>
+
+          <div class="overview-grid">
+            <div class="panel panel-pad">
+              <div class="panel-title">核心判断</div>
+              <div class="panel-subtitle">适合 1 分钟内完成口头汇报的关键点</div>
+              <ul class="insight-list" id="report-highlights"></ul>
+            </div>
+
+            <div class="panel panel-pad summary-table">
+              <div class="panel-title">关键信息快表</div>
+              <div class="panel-subtitle">按平台直接查看单路、并发和视频生成能力</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>GPU</th>
+                    <th>T2I 单路</th>
+                    <th>T2I 并发20</th>
+                    <th>视频能力</th>
+                    <th>建议定位</th>
+                  </tr>
+                </thead>
+                <tbody id="report-summary-table"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="report-layout">
+            <div class="panel panel-pad">
+              <div class="panel-title">正式测试报告预览</div>
+              <div class="panel-subtitle">可直接复制到邮件、飞书或周报，内容将随当前数据自动更新</div>
+              <div class="report-body" id="report-article"></div>
+            </div>
+
+            <div class="panel panel-pad">
+              <div class="panel-title">补充说明</div>
+              <div class="panel-subtitle">测试范围、风险点和部署建议</div>
+              <ul class="info-list" id="report-side-notes"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="tab-tti">
+          <div class="section-head">
+            <div>
+              <div class="section-title">文生图 (Text-to-Image) 性能对比</div>
+              <div class="section-desc">模型: Tongyi-MAI/Z-Image-Turbo · 数据集: vbench · 单位: 秒，越低越好。</div>
+            </div>
+          </div>
+
+          <div class="cards" id="tti-cards"></div>
+
+          <div class="chart-grid">
+            <div class="panel chart-box">
+              <h3>单路延迟对比</h3>
+              <p>单个请求的端到端耗时，反映 GPU 原始推理速度。</p>
+              <canvas id="tti-single-latency"></canvas>
+            </div>
+            <div class="panel chart-box">
+              <h3>高并发吞吐对比</h3>
+              <p>并发 20 请求下的每秒处理量，反映并发调度能力。</p>
+              <canvas id="tti-concur-throughput"></canvas>
+            </div>
+            <div class="panel chart-box">
+              <h3>并发延迟分布</h3>
+              <p>Mean / P90 / P99 延迟，展示尾延迟稳定性。</p>
+              <canvas id="tti-latency-dist"></canvas>
+            </div>
+            <div class="panel chart-box">
+              <h3>并发延迟增幅</h3>
+              <p>并发 20 相比单路的延迟放大倍数，越低越好。</p>
+              <canvas id="tti-scale-factor"></canvas>
+            </div>
+          </div>
+
+          <div class="panel table-wrap">
+            <div class="table-header">
+              <h3>详细数据</h3>
+              <div class="table-filters">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="1">并发 = 1</button>
+                <button class="filter-btn" data-filter="20">并发 = 20</button>
+              </div>
+            </div>
+            <table id="tti-table">
+              <thead>
+                <tr>
+                  <th>GPU</th>
+                  <th>并发</th>
+                  <th>吞吐 (req/s)</th>
+                  <th>均值延迟 (s)</th>
+                  <th>P90 (s)</th>
+                  <th>P99 (s)</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="tab-video">
+          <div class="section-head">
+            <div>
+              <div class="section-title">生视频 (T2V / I2V) 性能对比</div>
+              <div class="section-desc">模型: Wan-AI · 数据集: vbench · 并发 = 1 · 单位: 秒，越低越好。</div>
+            </div>
+          </div>
+
+          <div class="cards" id="video-cards"></div>
+
+          <div class="chart-grid">
+            <div class="panel chart-box">
+              <h3>文生视频 (T2V) 延迟对比</h3>
+              <p>各 GPU 在 T2V 模型上的单路端到端耗时。</p>
+              <canvas id="t2v-latency"></canvas>
+            </div>
+            <div class="panel chart-box">
+              <h3>图生视频 (I2V) 延迟对比</h3>
+              <p>各 GPU 在 I2V 模型上的单路端到端耗时。</p>
+              <canvas id="i2v-latency"></canvas>
+            </div>
+            <div class="panel chart-box" style="grid-column: 1 / -1;">
+              <h3>T2I / T2V / I2V 全景对比</h3>
+              <p>不同任务的延迟横向对比，采用对数刻度方便观察跨度。</p>
+              <canvas id="all-task-radar" style="max-height: 320px;"></canvas>
+            </div>
+          </div>
+
+          <div class="panel table-wrap">
+            <div class="table-header"><h3>详细数据</h3></div>
+            <table id="video-table">
+              <thead>
+                <tr>
+                  <th>GPU</th>
+                  <th>任务</th>
+                  <th>模型</th>
+                  <th>并发</th>
+                  <th>均值延迟 (s)</th>
+                  <th>P99 (s)</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="tab-conclusion">
+          <div class="section-head">
+            <div>
+              <div class="section-title">综合结论与选型建议</div>
+              <div class="section-desc">基于文生图、文生视频、图生视频测试数据，对算力定位、稳定性和部署场景进行综合判断。</div>
+            </div>
+          </div>
+
+          <div class="panel panel-pad markdown-panel">
+            <div class="panel-title">评测结论 Markdown 文件渲染</div>
+            <div class="panel-subtitle">页面直接渲染单独维护的 Markdown 结论文件，刷新页面后会自动拉取最新内容。</div>
+            <div class="markdown-host">
+              <article class="markdown-body" id="conclusion-markdown">正在加载评测结论...</article>
+            </div>
+          </div>
+
+          <div class="conclusion-grid" id="conclusion-cards"></div>
+
+          <div class="panel chart-box" style="margin-bottom: 24px;">
+            <h3>综合性能评分</h3>
+            <p>以 H800 为基准 100 分，对其他平台进行归一化评分，越高越好。</p>
+            <div id="score-bars" style="display: flex; flex-direction: column; gap: 14px; margin-top: 12px;"></div>
+          </div>
+
+          <div class="panel table-wrap">
+            <div class="table-header"><h3>场景选型矩阵</h3></div>
+            <table>
+              <thead>
+                <tr>
+                  <th>GPU</th>
+                  <th>文生图单路</th>
+                  <th>文生图高并发</th>
+                  <th>文生 / 图生视频</th>
+                  <th>资源复用</th>
+                  <th>适用场景</th>
+                </tr>
+              </thead>
+              <tbody id="selection-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="tab-all">
+          <div class="section-head">
+            <div>
+              <div class="section-title">全部测试数据</div>
+              <div class="section-desc">所有任务、所有 GPU 的原始测试结果，便于后续扩展和二次分析。</div>
+            </div>
+          </div>
+
+          <div class="panel panel-pad" style="margin-bottom: 24px;">
+            <div class="panel-title">动态任务图表</div>
+            <div class="panel-subtitle">自动按当前 benchmark_data.json 中的任务类型和并发档位生成图表，新增任务后刷新页面即可扩展展示。</div>
+            <div class="dynamic-task-grid" id="dynamic-task-grid"></div>
+          </div>
+
+          <div class="panel table-wrap">
+            <div class="table-header">
+              <h3>Raw Data</h3>
+              <div class="table-filters" id="all-task-filters"></div>
+            </div>
+            <table id="all-table">
+              <thead>
+                <tr>
+                  <th>GPU</th>
+                  <th>任务</th>
+                  <th>模型</th>
+                  <th>并发</th>
+                  <th>吞吐 (req/s)</th>
+                  <th>均值延迟 (s)</th>
+                  <th>P90 (s)</th>
+                  <th>P95 (s)</th>
+                  <th>P99 (s)</th>
+                  <th>备注</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="tab-manage">
+          <div class="section-head">
+            <div>
+              <div class="section-title">数据管理</div>
+              <div class="section-desc">采用“访问解锁 → 数据录入 → 数据导入导出 → GPU 档案维护”的固定布局，提前划分模块，避免后续页面扩展时结构混乱。</div>
+            </div>
+          </div>
+
+          <div class="lock-shell">
+            <div class="panel panel-pad">
+              <div class="status-row">
+                <div>
+                  <div class="panel-title">访问控制</div>
+                  <div class="panel-subtitle">数据管理区需要输入密码解锁，密码仅在当前浏览器会话中生效。</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <div class="status-pill locked" id="manage-status-pill">未解锁</div>
+                  <button class="btn btn-outline hidden" id="manage-lock-btn" onclick="lockManage()">重新锁定</button>
+                </div>
+              </div>
+
+              <div id="manage-locked" class="lock-panel">
+                <div class="module-caption">请输入密码后解锁数据管理页面。为便于使用，同时兼容英文感叹号与中文感叹号输入。</div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>访问密码</label>
+                    <input id="manage-password" type="password" placeholder="请输入密码" />
+                  </div>
+                  <div class="form-group" style="justify-content:flex-end;">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="unlockManage()">解锁数据管理</button>
+                  </div>
+                </div>
+                <div id="manage-auth-alert"></div>
+              </div>
+
+              <div id="manage-content" class="hidden">
+                <div class="module-grid">
+                  <div class="panel dm-box">
+                    <h3>模块 A · 添加测试记录</h3>
+                    <div class="module-caption">录入新的 benchmark 结果。后续增加模型、分辨率和量化格式时，页面结构无需重排。</div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label>GPU</label>
+                        <select id="add-gpu">
+                          <option value="">-- 选择 --</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>任务类型</label>
+                        <select id="add-task">
+                          <option value="text-to-image">text-to-image</option>
+                          <option value="text-to-video">text-to-video</option>
+                          <option value="image-to-video">image-to-video</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label>模型名称</label>
+                        <input id="add-model" placeholder="e.g. Tongyi-MAI/Z-Image-Turbo" />
+                      </div>
+                      <div class="form-group">
+                        <label>并发数</label>
+                        <input id="add-concurrency" type="number" value="1" min="1" />
+                      </div>
+                    </div>
+                    <div class="form-row cols3">
+                      <div class="form-group">
+                        <label>分辨率</label>
+                        <input id="add-resolution" placeholder="e.g. 1024x1024" />
+                      </div>
+                      <div class="form-group">
+                        <label>模型格式</label>
+                        <input id="add-format" placeholder="e.g. fp16, int8" />
+                      </div>
+                      <div class="form-group">
+                        <label>吞吐 (req/s)</label>
+                        <input id="add-throughput" type="number" step="0.01" />
+                      </div>
+                    </div>
+                    <div class="form-row cols3">
+                      <div class="form-group">
+                        <label>均值延迟 (s)</label>
+                        <input id="add-mean" type="number" step="0.01" />
+                      </div>
+                      <div class="form-group">
+                        <label>P90 (s)</label>
+                        <input id="add-p90" type="number" step="0.01" />
+                      </div>
+                      <div class="form-group">
+                        <label>P99 (s)</label>
+                        <input id="add-p99" type="number" step="0.01" />
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>备注</label>
+                        <input id="add-note" placeholder="可选：Single GPU running two inference services" />
+                      </div>
+                    </div>
+                    <div class="tool-row">
+                      <button class="btn btn-primary" onclick="addRecord()">添加记录</button>
+                      <button class="btn btn-outline" onclick="clearForm()">重置</button>
+                    </div>
+                    <div id="add-alert"></div>
+                  </div>
+
+                  <div class="panel dm-box">
+                    <h3>模块 B · 导入 / 导出 / 复制数据</h3>
+                    <div class="module-caption">支持直接编辑 JSON、复制测试数据和下载当前快照，便于发给研发、测试或运营同学复核。</div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                      <label>当前 JSON 数据</label>
+                      <textarea id="json-editor" rows="14"></textarea>
+                    </div>
+                    <div class="tool-row">
+                      <button class="btn btn-outline" onclick="reloadSourceData()">同步源文件</button>
+                      <button class="btn btn-success" onclick="importJSON()">导入并应用</button>
+                      <button class="btn btn-outline" onclick="refreshEditor()">刷新预览</button>
+                      <button class="btn btn-outline" onclick="copyData()">复制测试数据</button>
+                      <button class="btn btn-outline" onclick="downloadJSON()">下载 JSON</button>
+                      <button class="btn btn-danger" onclick="clearAll()">清空数据</button>
+                    </div>
+                    <div id="json-alert"></div>
+                  </div>
+                </div>
+
+                <div class="panel dm-box">
+                  <h3>模块 C · 添加 GPU 平台</h3>
+                  <div class="module-caption">维护 GPU 平台基础档案，新增平台后图表和汇报页会自动联动更新。</div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>GPU ID（唯一标识，英文）</label>
+                      <input id="gpu-id" placeholder="e.g. a100" />
+                    </div>
+                    <div class="form-group">
+                      <label>显示名称</label>
+                      <input id="gpu-name" placeholder="e.g. A100 SXM4 80G" />
+                    </div>
+                    <div class="form-group">
+                      <label>颜色</label>
+                      <input id="gpu-color" type="color" value="#4b97c8" />
+                    </div>
+                    <div class="form-group">
+                      <label>类型</label>
+                      <select id="gpu-category">
+                        <option value="datacenter">Datacenter</option>
+                        <option value="workstation">Workstation</option>
+                        <option value="consumer">Consumer</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="tool-row">
+                    <button class="btn btn-primary" onclick="addGPU()">添加 GPU</button>
+                  </div>
+                  <div id="gpu-alert"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'gpu_benchmark_data';
+    const SOURCE_HASH_KEY = 'gpu_benchmark_source_hash';
+    const SOURCE_DATA_URL = './benchmark_data.json';
+    const CONCLUSION_MD_URL = './benchmark_conclusion.md';
+    const MANAGE_UNLOCK_KEY = 'gpu_benchmark_manage_unlocked';
+    const MANAGE_PASSWORD = 'admin@798！';
+    const TASK_THEME_PALETTES = {
+      'text-to-image': ['#145bd6', '#2e7de0', '#16a6d9', '#30b89f', '#5f8fd7'],
+      'text-to-video': ['#0f8fe0', '#3b82f6', '#14b8a6', '#36a3b6', '#6183db'],
+      'image-to-video': ['#2563eb', '#0891b2', '#10b981', '#4f8ee8', '#6d97d9']
+    };
+    const DEFAULT_GPU_STYLES = {
+      h800: { id: 'h800', name: 'H800 Hopper FA3', category: 'datacenter', color: '#0b66c3' },
+      rtx_pro_6000: { id: 'rtx_pro_6000', name: 'RTX Pro 6000', category: 'workstation', color: '#2b7fc4' },
+      rtx_5090: { id: 'rtx_5090', name: 'RTX 5090', category: 'consumer', color: '#4b97c8' },
+      rtx_6000d: { id: 'rtx_6000d', name: 'RTX 6000D', category: 'workstation', color: '#7eaeca' }
+    };
+
+    let state = null;
+    let manageUnlocked = false;
+    const chartInstances = {};
+
+    Chart.defaults.color = '#5c758e';
+    Chart.defaults.borderColor = '#d7e4f0';
+    Chart.defaults.font.family = '"Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif';
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          state = JSON.parse(raw);
+          return;
+        }
+      } catch (error) {}
+      state = null;
+    }
+
+    async function fetchSourceState() {
+      try {
+        const response = await fetch(`${SOURCE_DATA_URL}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) return null;
+        const raw = await response.text();
+        return { raw, data: JSON.parse(raw) };
+      } catch (error) {
+        return null;
+      }
+    }
+
+    async function initState() {
+      loadState();
+      const sourceState = await fetchSourceState();
+      if (sourceState?.raw) {
+        const cachedSourceHash = localStorage.getItem(SOURCE_HASH_KEY);
+        if (!state || cachedSourceHash !== sourceState.raw) {
+          state = sourceState.data;
+        }
+        localStorage.setItem(SOURCE_HASH_KEY, sourceState.raw);
+      }
+      if (!state) {
+        state = { meta: { title: '', description: '', updated: '', tool: '', dataset: '' }, gpus: [], results: [] };
+      }
+      ensureStateDefaults();
+      saveState();
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state, null, 2));
+    }
+
+    function loadManageAccess() {
+      try {
+        manageUnlocked = sessionStorage.getItem(MANAGE_UNLOCK_KEY) === '1';
+      } catch (error) {
+        manageUnlocked = false;
+      }
+    }
+
+    function persistManageAccess() {
+      try {
+        sessionStorage.setItem(MANAGE_UNLOCK_KEY, manageUnlocked ? '1' : '0');
+      } catch (error) {}
+    }
+
+    function ensureStateDefaults() {
+      state.meta = state.meta || {};
+      state.meta.title = state.meta.title || '大模型推理显卡性能对比测试';
+      state.meta.description = state.meta.description || '基于 vbench 数据集，对不同 GPU 平台在图像和视频生成任务上的 Serving Benchmark 测试';
+      state.meta.updated = state.meta.updated || new Date().toISOString().slice(0, 10);
+      state.meta.tool = state.meta.tool || 'sglang';
+      state.meta.dataset = state.meta.dataset || 'vbench';
+
+      state.gpus = Array.isArray(state.gpus) ? state.gpus : [];
+      state.results = Array.isArray(state.results) ? state.results : [];
+
+      const knownGpuIds = new Set();
+      state.gpus = state.gpus.map((gpu) => {
+        const defaults = DEFAULT_GPU_STYLES[gpu.id] || {};
+        knownGpuIds.add(gpu.id);
+        return {
+          ...gpu,
+          name: gpu.name || defaults.name || gpu.id,
+          category: gpu.category || defaults.category || 'other',
+          color: defaults.color || gpu.color || '#7eaeca'
+        };
+      });
+
+      Object.entries(DEFAULT_GPU_STYLES).forEach(([id, defaults]) => {
+        if (!knownGpuIds.has(id) && state.results.some((record) => record.gpu === id)) {
+          state.gpus.push({ ...defaults });
+        }
+      });
+
+      state.results = state.results.map((record) => ({
+        ...record,
+        note: typeof record.note === 'string' ? record.note : '',
+        concurrency: Number(record.concurrency || 1)
+      }));
+    }
+
+    function gpuColor(id) {
+      const gpu = state.gpus.find((item) => item.id === id);
+      return gpu ? gpu.color : '#7eaeca';
+    }
+
+    function gpuName(id) {
+      const gpu = state.gpus.find((item) => item.id === id);
+      return gpu ? gpu.name : id;
+    }
+
+    function taskTag(task) {
+      if (task === 'text-to-image') return '<span class="tag tag-t2i">T2I</span>';
+      if (task === 'text-to-video') return '<span class="tag tag-t2v">T2V</span>';
+      return '<span class="tag tag-i2v">I2V</span>';
+    }
+
+    function shortModel(model) {
+      return model ? model.split('/').pop() : '—';
+    }
+
+    function fmtN(value, digits = 2) {
+      if (value === null || value === undefined || value === '') return '—';
+      return Number(value).toFixed(digits);
+    }
+
+    function fmtValueOrNA(value, digits = 2, suffix = 's') {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+      return `${Number(value).toFixed(digits)}${suffix}`;
+    }
+
+    function isSharedServiceRecord(record) {
+      const note = String(record?.note || '').toLowerCase();
+      return note.includes('two inference services') || note.includes('single gpu running two inference services') || note.includes('共卡');
+    }
+
+    function getTtiSingles() {
+      return state.results
+        .filter((record) => record.task === 'text-to-image' && record.concurrency === 1 && !isSharedServiceRecord(record))
+        .sort((left, right) => left.latency_mean_s - right.latency_mean_s);
+    }
+
+    function getTtiConcurrent() {
+      return state.results
+        .filter((record) => record.task === 'text-to-image' && record.concurrency === 20)
+        .sort((left, right) => left.latency_mean_s - right.latency_mean_s);
+    }
+
+    function getVideoRecords(task) {
+      return state.results
+        .filter((record) => record.task === task)
+        .sort((left, right) => left.latency_mean_s - right.latency_mean_s);
+    }
+
+    function getPrimaryModel(task) {
+      const record = state.results.find((item) => item.task === task && !isSharedServiceRecord(item));
+      return record ? shortModel(record.model) : '—';
+    }
+
+    function recommendationFor(gpuId) {
+      const recommendations = {
+        h800: '高并发生产集群 / 视频生成主力',
+        rtx_pro_6000: '主流工作站部署 / 中高负载推理',
+        rtx_5090: '中等负载 / 消费级验证环境',
+        rtx_6000d: '轻量任务 / 需严格资源隔离'
+      };
+      return recommendations[gpuId] || '根据业务需求评估';
+    }
+
+    function slugify(value) {
+      return String(value || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'task';
+    }
+
+    function taskPalette(task, count) {
+      const palette = TASK_THEME_PALETTES[task] || ['#145bd6', '#0f8fe0', '#14b8a6', '#6486d7', '#7a9fcf'];
+      return Array.from({ length: count }, (_, index) => palette[index % palette.length]);
+    }
+
+    function translucent(color, alpha = '77') {
+      return `${color}${alpha}`;
+    }
+
+    function clearChart(id) {
+      if (chartInstances[id]) {
+        chartInstances[id].destroy();
+        delete chartInstances[id];
+      }
+    }
+
+    function makeChart(id, config) {
+      clearChart(id);
+      const canvas = document.getElementById(id);
+      if (!canvas) return;
+      chartInstances[id] = new Chart(canvas, config);
+    }
+
+    function barConfig(labels, datasets, options = {}) {
+      return {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: { grid: { color: '#d7e4f0' } },
+            y: { grid: { color: '#d7e4f0' }, beginAtZero: true, ...options.y }
+          },
+          ...options.extra
+        }
+      };
+    }
+
+    function renderEmptyRow(tbodySelector, colSpan, message) {
+      const tbody = document.querySelector(tbodySelector);
+      tbody.innerHTML = `<tr><td class="empty-row" colspan="${colSpan}">${message}</td></tr>`;
+    }
+
+    function renderHeader() {
+      document.getElementById('datasetBadge').textContent = state.meta.dataset || 'vbench';
+      document.getElementById('toolBadge').textContent = state.meta.tool || 'sglang';
+      document.getElementById('updateBadge').textContent = state.meta.updated || '—';
+      document.getElementById('coverageBadge').textContent = `${state.gpus.length} GPU / ${state.results.length} 条`;
+      document.getElementById('headerDesc').textContent = `${state.gpus.length} 个 GPU 平台 · ${[...new Set(state.results.map((record) => record.task))].join(' / ')} · Serving Benchmark`;
+    }
+
+    function buildReportRows() {
+      return state.gpus.map((gpu) => {
+        const t2iSingle = state.results.find((record) => record.gpu === gpu.id && record.task === 'text-to-image' && record.concurrency === 1 && !isSharedServiceRecord(record));
+        const t2iConcur = state.results.find((record) => record.gpu === gpu.id && record.task === 'text-to-image' && record.concurrency === 20);
+        const t2v = state.results.find((record) => record.gpu === gpu.id && record.task === 'text-to-video');
+        const i2v = state.results.find((record) => record.gpu === gpu.id && record.task === 'image-to-video' && !isSharedServiceRecord(record));
+        const shared = state.results.find((record) => record.gpu === gpu.id && isSharedServiceRecord(record));
+        return { gpu, t2iSingle, t2iConcur, t2v, i2v, shared };
+      });
+    }
+
+    function generateReportMarkdown() {
+      const rows = buildReportRows();
+      const singles = getTtiSingles();
+      const concur20 = getTtiConcurrent();
+      const t2v = getVideoRecords('text-to-video');
+      const i2v = getVideoRecords('image-to-video');
+      const bestSingle = singles[0];
+      const bestConcur = [...concur20].sort((left, right) => left.latency_p99_s - right.latency_p99_s)[0];
+      const bestT2V = t2v[0];
+      const bestI2V = i2v.find((record) => !isSharedServiceRecord(record)) || i2v[0];
+      const shared6000D = state.results.find((record) => record.gpu === 'rtx_6000d' && record.task === 'image-to-video' && isSharedServiceRecord(record));
+
+      const summaryTable = rows.map(({ gpu, t2iSingle, t2iConcur, t2v: rowT2V, i2v: rowI2V, shared }) =>
+        `| ${gpu.name} | ${t2iSingle ? fmtValueOrNA(t2iSingle.latency_mean_s) : '—'} | ${t2iConcur ? fmtValueOrNA(t2iConcur.latency_mean_s) : '—'} | ${t2iConcur ? fmtValueOrNA(t2iConcur.latency_p99_s) : '—'} | ${rowT2V ? fmtValueOrNA(rowT2V.latency_mean_s) : '—'} | ${rowI2V ? fmtValueOrNA(rowI2V.latency_mean_s) : shared ? '共卡场景' : '—'} | ${recommendationFor(gpu.id)} |`
+      ).join('\n');
+
+      return [
+        '# 大模型推理显卡性能测试报告',
+        '',
+        `- 测试日期: ${state.meta.updated || '—'}`,
+        `- 数据集: ${state.meta.dataset || 'vbench'}`,
+        `- 测试工具: ${state.meta.tool || 'sglang'}`,
+        `- 覆盖平台: ${state.gpus.length} 个 GPU，${state.results.length} 条 benchmark 记录`,
+        '',
+        '## 一、执行摘要',
+        '',
+        `- 综合表现最优的平台为 ${bestSingle ? gpuName(bestSingle.gpu) : '—'}。其中，文生图单路最低延迟为 ${bestSingle ? fmtValueOrNA(bestSingle.latency_mean_s) : '—'}。`,
+        `- 高并发场景下，${bestConcur ? gpuName(bestConcur.gpu) : '—'} 的 P99 延迟最低，为 ${bestConcur ? fmtValueOrNA(bestConcur.latency_p99_s) : '—'}。`,
+        `- 视频生成方面，T2V 最快平台为 ${bestT2V ? gpuName(bestT2V.gpu) : '—'} (${bestT2V ? fmtValueOrNA(bestT2V.latency_mean_s) : '—'})，I2V 最快平台为 ${bestI2V ? gpuName(bestI2V.gpu) : '—'} (${bestI2V ? fmtValueOrNA(bestI2V.latency_mean_s) : '—'})。`,
+        `- 工作站场景下，RTX Pro 6000 的整体平衡性最佳；RTX 6000D 在单卡双服务场景下风险最高${shared6000D ? `，I2V 延迟达到 ${fmtValueOrNA(shared6000D.latency_mean_s)}` : ''}。`,
+        '',
+        '## 二、测试范围',
+        '',
+        '- 文生图: Tongyi-MAI/Z-Image-Turbo',
+        `- 文生视频: ${getPrimaryModel('text-to-video')}`,
+        `- 图生视频: ${getPrimaryModel('image-to-video')}`,
+        '- 并发场景: 单路与并发 20 路',
+        '',
+        '## 三、关键数据汇总',
+        '',
+        '| GPU | T2I 单路 | T2I 并发20均值 | T2I 并发20 P99 | T2V | I2V | 建议定位 |',
+        '| --- | --- | --- | --- | --- | --- | --- |',
+        summaryTable,
+        '',
+        '## 四、结论建议',
+        '',
+        '- 如目标是高并发生产部署或视频生成吞吐，优先选择 H800。',
+        '- 如目标是工作站形态的主流推理与成本平衡，优先采用 RTX Pro 6000。',
+        '- RTX 5090 适合中等负载或消费级验证环境，但缺少视频侧完整数据。',
+        '- RTX 6000D 不建议在视频生成任务中与其他服务共卡部署。',
+        '',
+        '## 五、补充说明',
+        '',
+        '- 本报告由当前页面中的 benchmark 数据自动生成。',
+        '- 详细图表与原始明细可在 index.html 的对应模块查看。'
+      ].join('\n');
+    }
+
+    function renderReport() {
+      const singles = getTtiSingles();
+      const concur20 = getTtiConcurrent();
+      const t2vRecords = getVideoRecords('text-to-video');
+      const i2vRecords = getVideoRecords('image-to-video');
+      const bestSingle = singles[0];
+      const bestConcurrent = [...concur20].sort((left, right) => left.latency_p99_s - right.latency_p99_s)[0];
+      const bestT2V = t2vRecords[0];
+      const bestI2V = i2vRecords.find((record) => !isSharedServiceRecord(record)) || i2vRecords[0];
+      const bestWorkstation = state.gpus
+        .filter((gpu) => gpu.category === 'workstation')
+        .map((gpu) => ({ gpu, record: state.results.find((record) => record.gpu === gpu.id && record.task === 'text-to-image' && record.concurrency === 1 && !isSharedServiceRecord(record)) }))
+        .filter((item) => item.record)
+        .sort((left, right) => left.record.latency_mean_s - right.record.latency_mean_s)[0];
+      const rows = buildReportRows();
+      const shared6000DT2I = state.results.find((record) => record.gpu === 'rtx_6000d' && record.task === 'text-to-image' && isSharedServiceRecord(record));
+      const shared6000DI2V = state.results.find((record) => record.gpu === 'rtx_6000d' && record.task === 'image-to-video' && isSharedServiceRecord(record));
+
+      const reportHeadlineEl = document.getElementById('reportHeadline');
+      const workstationName = bestWorkstation ? bestWorkstation.gpu.name : gpuName(bestSingle?.gpu);
+      document.getElementById('reportHeroText').textContent = bestSingle
+        ? `当前数据覆盖 ${state.gpus.length} 个 GPU 平台与 ${state.results.length} 条结果。${gpuName(bestSingle.gpu)} 保持单路速度优势，${gpuName((bestConcurrent || bestSingle).gpu)} 在高并发场景中表现更稳，${workstationName} 是当前最稳妥的工作站部署选项。`
+        : '当前暂无可展示的 benchmark 数据，请先在数据管理页导入或录入测试结果。';
+      if (reportHeadlineEl) {
+        reportHeadlineEl.textContent = bestSingle
+          ? `当前测试显示，${gpuName(bestSingle.gpu)} 在单路图像生成上领先，${gpuName((bestT2V || bestSingle).gpu)} 在视频生成链路上表现最优。`
+          : '当前暂无可用于汇报的核心结论。';
+      }
+
+      const kpiEl = document.getElementById('report-kpis');
+      if (!state.results.length) {
+        kpiEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">当前暂无数据，无法生成关键指标。</div>';
+      } else {
+        kpiEl.innerHTML = [
+          { label: '最优 T2I 单路', value: bestSingle ? fmtValueOrNA(bestSingle.latency_mean_s) : '—', sub: bestSingle ? gpuName(bestSingle.gpu) : '暂无' },
+          { label: '最优并发 P99', value: bestConcurrent ? fmtValueOrNA(bestConcurrent.latency_p99_s) : '—', sub: bestConcurrent ? gpuName(bestConcurrent.gpu) : '暂无' },
+          { label: '最快 T2V', value: bestT2V ? fmtValueOrNA(bestT2V.latency_mean_s) : '—', sub: bestT2V ? gpuName(bestT2V.gpu) : '暂无' },
+          { label: '最快 I2V', value: bestI2V ? fmtValueOrNA(bestI2V.latency_mean_s) : '—', sub: bestI2V ? gpuName(bestI2V.gpu) : '暂无' }
+        ].map((item) => `
+          <div class="mini-kpi">
+            <span class="label">${item.label}</span>
+            <span class="value">${item.value}</span>
+            <span class="sub">${item.sub}</span>
+          </div>
+        `).join('');
+      }
+
+      const highlightsEl = document.getElementById('report-highlights');
+      if (!state.results.length) {
+        highlightsEl.innerHTML = '<li><strong>暂无结论</strong>请先导入 benchmark 数据后再查看汇总结论。</li>';
+      } else {
+        highlightsEl.innerHTML = [
+          {
+            title: '高并发表现',
+            body: bestConcurrent ? `${gpuName(bestConcurrent.gpu)} 在并发 20 场景下 P99 最低，为 ${fmtValueOrNA(bestConcurrent.latency_p99_s)}，适合作为生产环境优先平台。` : '暂无高并发数据。'
+          },
+          {
+            title: '工作站推荐',
+            body: 'RTX Pro 6000 的单路、并发和视频侧表现均位于工作站平台前列，适合作为通用推理工作站标准配置。'
+          },
+          {
+            title: '风险提示',
+            body: shared6000DI2V ? `RTX 6000D 在单卡双服务场景下，I2V 延迟上升到 ${fmtValueOrNA(shared6000DI2V.latency_mean_s)}，不建议共卡部署视频任务。` : '当前没有检测到显著的共卡风险记录。'
+          },
+          {
+            title: '决策建议',
+            body: '如业务以图片生成为主，可在 H800 与 RTX Pro 6000 之间按预算分层部署；如含视频生产链路，建议优先预留 H800 或同级别数据中心卡。'
+          }
+        ].map((item) => `<li><strong>${item.title}</strong>${item.body}</li>`).join('');
+      }
+
+      const summaryTableEl = document.getElementById('report-summary-table');
+      if (!rows.length) {
+        summaryTableEl.innerHTML = '<tr><td class="empty-row" colspan="5">暂无数据</td></tr>';
+      } else {
+        summaryTableEl.innerHTML = rows.map(({ gpu, t2iSingle, t2iConcur, t2v, i2v, shared }) => `
+          <tr>
+            <td><span class="gpu-dot" style="background:${gpu.color}"></span>${gpu.name}</td>
+            <td>${t2iSingle ? fmtValueOrNA(t2iSingle.latency_mean_s) : '—'}</td>
+            <td>${t2iConcur ? fmtValueOrNA(t2iConcur.latency_mean_s) : '—'}</td>
+            <td>${t2v ? fmtValueOrNA(t2v.latency_mean_s) : i2v ? fmtValueOrNA(i2v.latency_mean_s) : shared ? '共卡风险' : '暂无'}</td>
+            <td>${recommendationFor(gpu.id)}</td>
+          </tr>
+        `).join('');
+      }
+
+      const reportArticleEl = document.getElementById('report-article');
+      if (!state.results.length) {
+        reportArticleEl.innerHTML = '<div class="empty-state">暂无数据，无法生成报告内容。</div>';
+      } else {
+        reportArticleEl.innerHTML = `
+          <div class="report-block">
+            <h4>一、测试背景</h4>
+            <p>本次测试围绕文生图、文生视频和图生视频三类推理任务展开，目标是评估不同 GPU 平台在生产部署、工作站推理和资源复用场景下的性能边界，为硬件选型和资源规划提供依据。</p>
+          </div>
+          <div class="report-block">
+            <h4>二、核心结论</h4>
+            <ol>
+              <li>${bestSingle ? `${gpuName(bestSingle.gpu)} 在文生图单路场景最快，均值延迟为 ${fmtValueOrNA(bestSingle.latency_mean_s)}。` : '暂无文生图单路结论。'}</li>
+              <li>${bestConcurrent ? `${gpuName(bestConcurrent.gpu)} 在文生图并发 20 场景下 P99 最低，为 ${fmtValueOrNA(bestConcurrent.latency_p99_s)}，说明尾延迟控制更稳定。` : '暂无并发结论。'}</li>
+              <li>${bestT2V ? `${gpuName(bestT2V.gpu)} 在 T2V 任务中延迟最低，为 ${fmtValueOrNA(bestT2V.latency_mean_s)}。` : '暂无 T2V 结论。'}</li>
+              <li>${bestI2V ? `${gpuName(bestI2V.gpu)} 在 I2V 任务中延迟最低，为 ${fmtValueOrNA(bestI2V.latency_mean_s)}。` : '暂无 I2V 结论。'}</li>
+            </ol>
+          </div>
+          <div class="report-block">
+            <h4>三、平台判断</h4>
+            <ul>
+              <li>H800 适合承担高并发生产和视频生成主链路，是追求性能上限时的首选。</li>
+              <li>RTX Pro 6000 适合作为工作站与中高负载推理的主力平台，兼顾性能与部署灵活性。</li>
+              <li>RTX 5090 更适合中等负载或消费级验证环境，目前仍缺少视频侧完整数据，建议后续补测。</li>
+              <li>${shared6000DT2I ? `RTX 6000D 在单卡双服务下，文生图单路从 4.14s 上升到 ${fmtValueOrNA(shared6000DT2I.latency_mean_s)}，说明资源争抢明显。` : 'RTX 6000D 的共卡风险仍需持续关注。'}</li>
+            </ul>
+          </div>
+          <div class="report-block">
+            <h4>四、部署建议</h4>
+            <ul>
+              <li>若业务目标是高并发生产或视频生成效率，优先部署 H800 级别平台。</li>
+              <li>若业务目标是工作站标准化和推理成本平衡，优先采用 RTX Pro 6000。</li>
+              <li>避免在 RTX 6000D 上将视频生成服务与其他推理服务混部。</li>
+            </ul>
+          </div>
+        `;
+      }
+
+      const sideNotesEl = document.getElementById('report-side-notes');
+      sideNotesEl.innerHTML = [
+        { title: '测试范围', body: `本轮共覆盖 ${state.gpus.length} 个 GPU 平台，包含 ${state.results.length} 条 benchmark 记录。` },
+        { title: '数据说明', body: '文生图包含单路和并发 20 两种场景，视频任务目前以单路测试为主。' },
+        { title: '风险识别', body: shared6000DI2V ? `RTX 6000D 共卡场景已观测到 I2V ${fmtValueOrNA(shared6000DI2V.latency_mean_s)} 的显著抖动。` : '当前数据未发现新的共卡异常。' },
+        { title: '后续建议', body: '建议补齐 RTX 5090 的视频任务数据，并在未来增加更多分辨率、量化格式和模型版本维度。' }
+      ].map((item) => `<li><strong>${item.title}</strong>${item.body}</li>`).join('');
+    }
+
+    async function renderConclusionMarkdown() {
+      const host = document.getElementById('conclusion-markdown');
+      if (!host) return;
+      try {
+        const response = await fetch(`${CONCLUSION_MD_URL}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`加载失败: ${response.status}`);
+        }
+        const markdown = await response.text();
+        host.innerHTML = DOMPurify.sanitize(marked.parse(markdown));
+      } catch (error) {
+        host.innerHTML = `<p>结论文件加载失败，请检查 ${CONCLUSION_MD_URL} 是否存在。</p><p class="muted">${error.message}</p>`;
+      }
+    }
+
+    function renderTTI() {
+      const tti = state.results.filter((record) => record.task === 'text-to-image');
+      const singles = getTtiSingles();
+      const sortedConcurrent = [...getTtiConcurrent()].sort((left, right) => right.request_throughput - left.request_throughput);
+      const cardsEl = document.getElementById('tti-cards');
+
+      if (!tti.length) {
+        cardsEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">暂无文生图数据。</div>';
+        ['tti-single-latency', 'tti-concur-throughput', 'tti-latency-dist', 'tti-scale-factor'].forEach(clearChart);
+        renderTTITable('all');
+        return;
+      }
+
+      const ranks = ['#1 最快', '#2', '#3', '#4', '#5'];
+      const rankClasses = ['rank-1', 'rank-2', 'rank-3', 'rank-4', 'rank-4'];
+      cardsEl.innerHTML = singles.map((record, index) => `
+        <div class="card" style="--card-color:${gpuColor(record.gpu)}">
+          <div class="card-rank ${rankClasses[index] || 'rank-4'}">${ranks[index] || `#${index + 1}`}</div>
+          <div class="card-label">单路延迟</div>
+          <div class="card-value" style="color:${gpuColor(record.gpu)}">${fmtN(record.latency_mean_s)}s</div>
+          <div class="card-sub">${gpuName(record.gpu)}</div>
+          <div class="muted" style="margin-top:10px;">吞吐 ${fmtN(record.request_throughput)} req/s</div>
+        </div>
+      `).join('');
+
+      makeChart('tti-single-latency', barConfig(
+        singles.map((record) => gpuName(record.gpu)),
+        [{
+          label: '单路均值延迟 (s)',
+          data: singles.map((record) => record.latency_mean_s),
+          backgroundColor: singles.map((record) => gpuColor(record.gpu)),
+          borderRadius: 8
+        }],
+        { y: { title: { display: true, text: '延迟 (s)' } } }
+      ));
+
+      makeChart('tti-concur-throughput', barConfig(
+        sortedConcurrent.map((record) => gpuName(record.gpu)),
+        [{
+          label: '吞吐 req/s (并发20)',
+          data: sortedConcurrent.map((record) => record.request_throughput),
+          backgroundColor: sortedConcurrent.map((record) => gpuColor(record.gpu)),
+          borderRadius: 8
+        }],
+        { y: { title: { display: true, text: 'req/s' } } }
+      ));
+
+      const concurrent = getTtiConcurrent();
+      makeChart('tti-latency-dist', {
+        type: 'bar',
+        data: {
+          labels: concurrent.map((record) => gpuName(record.gpu)),
+          datasets: [
+            { label: 'Mean', data: concurrent.map((record) => record.latency_mean_s), backgroundColor: concurrent.map((record) => gpuColor(record.gpu)), borderRadius: 4 },
+            { label: 'P90', data: concurrent.map((record) => record.latency_p90_s), backgroundColor: concurrent.map((record) => `${gpuColor(record.gpu)}99`), borderRadius: 4 },
+            { label: 'P99', data: concurrent.map((record) => record.latency_p99_s), backgroundColor: concurrent.map((record) => `${gpuColor(record.gpu)}55`), borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { grid: { color: '#d7e4f0' } },
+            y: { grid: { color: '#d7e4f0' }, beginAtZero: true, title: { display: true, text: '延迟 (s)' } }
+          }
+        }
+      });
+
+      const scaleData = concurrent.map((record) => {
+        const single = singles.find((item) => item.gpu === record.gpu);
+        return { gpu: record.gpu, factor: single ? record.latency_mean_s / single.latency_mean_s : 0 };
+      }).sort((left, right) => left.factor - right.factor);
+
+      makeChart('tti-scale-factor', barConfig(
+        scaleData.map((item) => gpuName(item.gpu)),
+        [{
+          label: '延迟放大倍数 (并发20 / 单路)',
+          data: scaleData.map((item) => Number(item.factor.toFixed(2))),
+          backgroundColor: scaleData.map((item) => gpuColor(item.gpu)),
+          borderRadius: 8
+        }],
+        { y: { title: { display: true, text: '倍数' } } }
+      ));
+
+      renderTTITable('all');
+    }
+
+    function renderTTITable(filter) {
+      const rows = state.results.filter((record) => record.task === 'text-to-image' && (filter === 'all' || String(record.concurrency) === filter));
+      if (!rows.length) {
+        renderEmptyRow('#tti-table tbody', 7, '暂无符合条件的数据');
+        return;
+      }
+      const latencies = rows.map((record) => record.latency_mean_s);
+      const minLatency = Math.min(...latencies);
+      const maxLatency = Math.max(...latencies);
+      const tbody = document.querySelector('#tti-table tbody');
+      tbody.innerHTML = rows.map((record) => `
+        <tr>
+          <td><span class="gpu-dot" style="background:${gpuColor(record.gpu)}"></span>${gpuName(record.gpu)}</td>
+          <td>${record.concurrency}</td>
+          <td>${fmtN(record.request_throughput, 2)}</td>
+          <td class="${record.latency_mean_s === minLatency ? 'metric-best' : record.latency_mean_s === maxLatency ? 'metric-worst' : ''}">${fmtN(record.latency_mean_s)}</td>
+          <td>${fmtN(record.latency_p90_s)}</td>
+          <td>${fmtN(record.latency_p99_s)}</td>
+          <td class="muted">${record.note || '—'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderVideo() {
+      const videos = state.results.filter((record) => record.task !== 'text-to-image');
+      const cardsEl = document.getElementById('video-cards');
+      const t2v = getVideoRecords('text-to-video');
+      const i2v = getVideoRecords('image-to-video');
+
+      if (!videos.length) {
+        cardsEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">暂无视频任务数据。</div>';
+        ['t2v-latency', 'i2v-latency', 'all-task-radar'].forEach(clearChart);
+        renderEmptyRow('#video-table tbody', 7, '暂无视频任务数据');
+        return;
+      }
+
+      const cards = [
+        { label: 'T2V 最快', data: t2v[0] },
+        { label: 'I2V 最快', data: i2v.find((record) => !isSharedServiceRecord(record)) || i2v[0] }
+      ].filter((item) => item.data);
+
+      cardsEl.innerHTML = cards.map((item) => `
+        <div class="card" style="--card-color:${gpuColor(item.data.gpu)}">
+          <div class="card-rank rank-1">${item.label}</div>
+          <div class="card-label">单路延迟</div>
+          <div class="card-value" style="color:${gpuColor(item.data.gpu)}">${fmtN(item.data.latency_mean_s)}s</div>
+          <div class="card-sub">${gpuName(item.data.gpu)} · ${shortModel(item.data.model)}</div>
+        </div>
+      `).join('');
+
+      makeChart('t2v-latency', barConfig(
+        t2v.map((record) => `${gpuName(record.gpu)}\n${shortModel(record.model)}`),
+        [{
+          label: 'T2V 延迟 (s)',
+          data: t2v.map((record) => record.latency_mean_s),
+          backgroundColor: t2v.map((record) => gpuColor(record.gpu)),
+          borderRadius: 8
+        }],
+        { y: { title: { display: true, text: '延迟 (s)' } } }
+      ));
+
+      makeChart('i2v-latency', barConfig(
+        i2v.map((record) => `${gpuName(record.gpu)}${isSharedServiceRecord(record) ? ' (共卡)' : ''}`),
+        [{
+          label: 'I2V 延迟 (s)',
+          data: i2v.map((record) => record.latency_mean_s),
+          backgroundColor: i2v.map((record) => gpuColor(record.gpu)),
+          borderRadius: 8
+        }],
+        { y: { title: { display: true, text: '延迟 (s)' } } }
+      ));
+
+      const gpuIds = [...new Set(state.results.map((record) => record.gpu))];
+      const taskLabels = ['text-to-image (c=1)', 'text-to-video', 'image-to-video'];
+      const taskData = gpuIds.map((gpuId) => {
+        const t2iSingle = state.results.find((record) => record.gpu === gpuId && record.task === 'text-to-image' && record.concurrency === 1 && !isSharedServiceRecord(record));
+        const t2vRecord = state.results.find((record) => record.gpu === gpuId && record.task === 'text-to-video');
+        const i2vRecord = state.results.find((record) => record.gpu === gpuId && record.task === 'image-to-video' && !isSharedServiceRecord(record));
+        return [t2iSingle?.latency_mean_s || null, t2vRecord?.latency_mean_s || null, i2vRecord?.latency_mean_s || null];
+      });
+
+      makeChart('all-task-radar', {
+        type: 'bar',
+        data: {
+          labels: taskLabels,
+          datasets: gpuIds.map((gpuId, index) => ({
+            label: gpuName(gpuId),
+            data: taskData[index],
+            backgroundColor: `${gpuColor(gpuId)}cc`,
+            borderRadius: 5
+          }))
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { grid: { color: '#d7e4f0' } },
+            y: {
+              grid: { color: '#d7e4f0' },
+              beginAtZero: true,
+              type: 'logarithmic',
+              title: { display: true, text: '延迟 (s) [对数刻度]' }
+            }
+          }
+        }
+      });
+
+      const tbody = document.querySelector('#video-table tbody');
+      tbody.innerHTML = videos.map((record) => `
+        <tr>
+          <td><span class="gpu-dot" style="background:${gpuColor(record.gpu)}"></span>${gpuName(record.gpu)}</td>
+          <td>${taskTag(record.task)}</td>
+          <td class="muted">${shortModel(record.model)}</td>
+          <td>${record.concurrency}</td>
+          <td>${fmtN(record.latency_mean_s)}</td>
+          <td>${fmtN(record.latency_p99_s)}</td>
+          <td class="muted">${record.note || '—'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAll() {
+      const tasks = [...new Set(state.results.map((record) => record.task))];
+      const filtersEl = document.getElementById('all-task-filters');
+      filtersEl.innerHTML = `<button class="filter-btn active" data-task="all">全部</button>${tasks.map((task) => `<button class="filter-btn" data-task="${task}">${task}</button>`).join('')}`;
+      filtersEl.querySelectorAll('.filter-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          filtersEl.querySelectorAll('.filter-btn').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          renderAllTable(button.dataset.task);
+        });
+      });
+      renderAllTable('all');
+      renderDynamicTaskCharts();
+    }
+
+    function renderDynamicTaskCharts() {
+      const host = document.getElementById('dynamic-task-grid');
+      if (!host) return;
+
+      Object.keys(chartInstances)
+        .filter((id) => id.startsWith('dynamic-'))
+        .forEach((id) => clearChart(id));
+
+      const tasks = [...new Set(state.results.map((record) => record.task))];
+      if (!tasks.length) {
+        host.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">暂无任务数据，无法生成动态图表。</div>';
+        return;
+      }
+
+      host.innerHTML = tasks.map((task) => {
+        const slug = slugify(task);
+        return `
+          <div class="panel chart-box">
+            <h3>${task} 延迟图</h3>
+            <p>自动按当前任务、GPU、并发和模型维度生成，支持后续新增任务类型扩展。</p>
+            <canvas id="dynamic-latency-${slug}"></canvas>
+          </div>
+          <div class="panel chart-box">
+            <h3>${task} 吞吐图</h3>
+            <p>同步展示同一任务下的吞吐变化，刷新页面即可读取最新源文件数据。</p>
+            <canvas id="dynamic-throughput-${slug}"></canvas>
+          </div>
+        `;
+      }).join('');
+
+      tasks.forEach((task) => {
+        const records = state.results
+          .filter((record) => record.task === task)
+          .sort((left, right) => left.latency_mean_s - right.latency_mean_s);
+        const slug = slugify(task);
+        const multiModel = new Set(records.map((record) => record.model)).size > 1;
+        const labels = records.map((record) => `${gpuName(record.gpu)} · c=${record.concurrency}${multiModel ? ` · ${shortModel(record.model)}` : ''}`);
+        const colors = taskPalette(task, records.length);
+
+        makeChart(`dynamic-latency-${slug}`, barConfig(
+          labels,
+          [{
+            label: '均值延迟 (s)',
+            data: records.map((record) => record.latency_mean_s),
+            backgroundColor: colors,
+            borderRadius: 8
+          }],
+          { y: { title: { display: true, text: '延迟 (s)' } } }
+        ));
+
+        makeChart(`dynamic-throughput-${slug}`, barConfig(
+          labels,
+          [{
+            label: '吞吐 (req/s)',
+            data: records.map((record) => record.request_throughput),
+            backgroundColor: colors.map((color) => translucent(color, '99')),
+            borderRadius: 8
+          }],
+          { y: { title: { display: true, text: 'req/s' } } }
+        ));
+      });
+    }
+
+    function renderAllTable(taskFilter) {
+      const rows = taskFilter === 'all' ? state.results : state.results.filter((record) => record.task === taskFilter);
+      if (!rows.length) {
+        renderEmptyRow('#all-table tbody', 10, '暂无数据');
+        return;
+      }
+      const tbody = document.querySelector('#all-table tbody');
+      tbody.innerHTML = rows.map((record) => `
+        <tr>
+          <td><span class="gpu-dot" style="background:${gpuColor(record.gpu)}"></span>${gpuName(record.gpu)}</td>
+          <td>${taskTag(record.task)}</td>
+          <td class="muted">${shortModel(record.model)}</td>
+          <td>${record.concurrency}</td>
+          <td>${fmtN(record.request_throughput, 3)}</td>
+          <td>${fmtN(record.latency_mean_s)}</td>
+          <td>${fmtN(record.latency_p90_s)}</td>
+          <td>${fmtN(record.latency_p95_s)}</td>
+          <td>${fmtN(record.latency_p99_s)}</td>
+          <td class="muted">${record.note || '—'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderConclusion() {
+      const gpuIds = state.gpus.map((gpu) => gpu.id);
+      const cardsEl = document.getElementById('conclusion-cards');
+      const scoreBarsEl = document.getElementById('score-bars');
+      const selectionEl = document.getElementById('selection-table');
+
+      if (!gpuIds.length) {
+        cardsEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">暂无 GPU 数据。</div>';
+        scoreBarsEl.innerHTML = '<div class="empty-state">暂无综合评分。</div>';
+        selectionEl.innerHTML = '<tr><td class="empty-row" colspan="6">暂无选型数据</td></tr>';
+        return;
+      }
+
+      const scores = {};
+      gpuIds.forEach((gpuId) => {
+        const t2iSingle = state.results.find((record) => record.gpu === gpuId && record.task === 'text-to-image' && record.concurrency === 1 && !isSharedServiceRecord(record));
+        const t2iConcur = state.results.find((record) => record.gpu === gpuId && record.task === 'text-to-image' && record.concurrency === 20);
+        const t2v = state.results.find((record) => record.gpu === gpuId && record.task === 'text-to-video');
+        const i2v = state.results.find((record) => record.gpu === gpuId && record.task === 'image-to-video' && !isSharedServiceRecord(record));
+        let score = 0;
+        let count = 0;
+        if (t2iSingle) { score += t2iSingle.latency_mean_s; count += 1; }
+        if (t2iConcur) { score += t2iConcur.latency_mean_s / 5; count += 1; }
+        if (t2v) { score += t2v.latency_mean_s / 30; count += 1; }
+        if (i2v) { score += i2v.latency_mean_s / 30; count += 1; }
+        scores[gpuId] = count ? score / count : 9999;
+      });
+
+      const minScore = Math.min(...Object.values(scores));
+      const normalized = {};
+      gpuIds.forEach((gpuId) => {
+        normalized[gpuId] = scores[gpuId] > 0 ? Math.round((minScore / scores[gpuId]) * 100) : 0;
+      });
+
+      const conclusionDefs = {
+        h800: ['文生图单路与高并发均领先', '视频生成速度最快', '适合高并发生产集群'],
+        rtx_pro_6000: ['工作站平台中表现最均衡', '并发稳定性较好', '适合标准化推理部署'],
+        rtx_5090: ['文生图能力居中', '可作为验证或中负载平台', '建议补测视频链路数据'],
+        rtx_6000d: ['文生图与视频侧性能偏弱', '共卡部署风险高', '适合轻量或隔离场景']
+      };
+
+      cardsEl.innerHTML = state.gpus.map((gpu) => `
+        <div class="conclusion-card" style="--card-color:${gpu.color}">
+          <h4><span class="gpu-dot" style="background:${gpu.color}"></span>${gpu.name}</h4>
+          <ul>${(conclusionDefs[gpu.id] || ['暂无足够数据']).map((item) => `<li>${item}</li>`).join('')}</ul>
+        </div>
+      `).join('');
+
+      scoreBarsEl.innerHTML = [...state.gpus].sort((left, right) => (normalized[right.id] || 0) - (normalized[left.id] || 0)).map((gpu) => `
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.84rem;">
+            <span><span class="gpu-dot" style="background:${gpu.color}"></span>${gpu.name}</span>
+            <span style="font-weight:800;color:${gpu.color};">${normalized[gpu.id] || 0}</span>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar" style="--bar-color:${gpu.color};width:${normalized[gpu.id] || 0}%"></div>
+          </div>
+        </div>
+      `).join('');
+
+      const selectionDefs = {
+        h800: ['优秀', '优秀', '优秀', '建议独占', '高并发、低延迟、视频生产部署'],
+        rtx_pro_6000: ['良好', '良好', '中上', '建议单业务', '主流推理、工作站标准配置'],
+        rtx_5090: ['中上', '中等', '待补测', '建议单业务', '中等负载、消费场景验证'],
+        rtx_6000d: ['中等', '偏弱', '偏弱', '不建议共卡', '轻量业务或资源隔离场景']
+      };
+
+      selectionEl.innerHTML = state.gpus.map((gpu) => {
+        const row = selectionDefs[gpu.id] || ['—', '—', '—', '—', '待评估'];
+        return `
+          <tr>
+            <td><span class="gpu-dot" style="background:${gpu.color}"></span>${gpu.name}</td>
+            <td>${row[0]}</td>
+            <td>${row[1]}</td>
+            <td>${row[2]}</td>
+            <td>${row[3]}</td>
+            <td class="muted">${row[4]}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderManageAccess() {
+      const lockedEl = document.getElementById('manage-locked');
+      const contentEl = document.getElementById('manage-content');
+      const statusEl = document.getElementById('manage-status-pill');
+      const lockButton = document.getElementById('manage-lock-btn');
+
+      if (manageUnlocked) {
+        lockedEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+        statusEl.textContent = '已解锁';
+        statusEl.classList.remove('locked');
+        statusEl.classList.add('unlocked');
+        lockButton.classList.remove('hidden');
+        renderManage();
+      } else {
+        lockedEl.classList.remove('hidden');
+        contentEl.classList.add('hidden');
+        statusEl.textContent = '未解锁';
+        statusEl.classList.add('locked');
+        statusEl.classList.remove('unlocked');
+        lockButton.classList.add('hidden');
+      }
+    }
+
+    function normalizePassword(value) {
+      return String(value || '').trim().replace(/!/g, '！');
+    }
+
+    function unlockManage() {
+      const input = document.getElementById('manage-password');
+      const password = normalizePassword(input.value);
+      if (password !== MANAGE_PASSWORD) {
+        showAlert('manage-auth-alert', '密码错误，无法解锁数据管理页面。', 'err');
+        return;
+      }
+      manageUnlocked = true;
+      persistManageAccess();
+      input.value = '';
+      renderManageAccess();
+      showAlert('manage-auth-alert', '已成功解锁数据管理页面。', 'ok');
+    }
+
+    function lockManage() {
+      manageUnlocked = false;
+      persistManageAccess();
+      renderManageAccess();
+    }
+
+    function renderManage() {
+      const select = document.getElementById('add-gpu');
+      select.innerHTML = '<option value="">-- 选择 --</option>' + state.gpus.map((gpu) => `<option value="${gpu.id}">${gpu.name}</option>`).join('');
+      refreshEditor();
+    }
+
+    async function reloadSourceData() {
+      const sourceState = await fetchSourceState();
+      if (!sourceState?.data) {
+        showAlert('json-alert', '源文件读取失败，请确认 benchmark_data.json 可访问。', 'err');
+        return;
+      }
+      state = sourceState.data;
+      ensureStateDefaults();
+      localStorage.setItem(SOURCE_HASH_KEY, sourceState.raw);
+      saveState();
+      refreshAllViews();
+      showAlert('json-alert', '已从 benchmark_data.json 重新同步数据。', 'ok');
+    }
+
+    function refreshEditor() {
+      const editor = document.getElementById('json-editor');
+      if (editor) {
+        editor.value = JSON.stringify(state, null, 2);
+      }
+    }
+
+    function addRecord() {
+      const gpu = document.getElementById('add-gpu').value;
+      const task = document.getElementById('add-task').value;
+      const model = document.getElementById('add-model').value.trim();
+      const concurrency = parseInt(document.getElementById('add-concurrency').value, 10) || 1;
+      const resolution = document.getElementById('add-resolution').value.trim() || null;
+      const modelFormat = document.getElementById('add-format').value.trim() || null;
+      const requestThroughput = parseFloat(document.getElementById('add-throughput').value) || 0;
+      const latencyMean = parseFloat(document.getElementById('add-mean').value);
+      const latencyP90 = parseFloat(document.getElementById('add-p90').value);
+      const latencyP99 = parseFloat(document.getElementById('add-p99').value);
+      const note = document.getElementById('add-note').value.trim();
+
+      if (!gpu || !model || Number.isNaN(latencyMean)) {
+        showAlert('add-alert', '请填写 GPU、模型名称和均值延迟。', 'err');
+        return;
+      }
+
+      state.results.push({
+        gpu,
+        task,
+        model,
+        resolution,
+        model_format: modelFormat,
+        concurrency,
+        successful_requests: concurrency,
+        total_requests: concurrency,
+        benchmark_duration_s: 0,
+        request_throughput: requestThroughput,
+        output_throughput: requestThroughput,
+        latency_mean_s: latencyMean,
+        latency_median_s: latencyMean,
+        latency_p90_s: Number.isNaN(latencyP90) ? latencyMean : latencyP90,
+        latency_p95_s: Number.isNaN(latencyP99) ? latencyMean : latencyP99,
+        latency_p99_s: Number.isNaN(latencyP99) ? latencyMean : latencyP99,
+        note
+      });
+
+      ensureStateDefaults();
+      saveState();
+      refreshAllViews();
+      showAlert('add-alert', '测试记录已添加。', 'ok');
+    }
+
+    function clearForm() {
+      document.getElementById('add-gpu').value = '';
+      document.getElementById('add-task').value = 'text-to-image';
+      document.getElementById('add-model').value = '';
+      document.getElementById('add-concurrency').value = 1;
+      document.getElementById('add-resolution').value = '';
+      document.getElementById('add-format').value = '';
+      document.getElementById('add-throughput').value = '';
+      document.getElementById('add-mean').value = '';
+      document.getElementById('add-p90').value = '';
+      document.getElementById('add-p99').value = '';
+      document.getElementById('add-note').value = '';
+    }
+
+    function importJSON() {
+      try {
+        const parsed = JSON.parse(document.getElementById('json-editor').value);
+        if (!parsed.gpus || !parsed.results) {
+          throw new Error('JSON 需要包含 gpus 和 results 字段');
+        }
+        state = parsed;
+        ensureStateDefaults();
+        saveState();
+        refreshAllViews();
+        showAlert('json-alert', 'JSON 已导入并刷新全部页面。', 'ok');
+      } catch (error) {
+        showAlert('json-alert', `解析失败: ${error.message}`, 'err');
+      }
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const anchor = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      anchor.href = url;
+      anchor.download = 'benchmark_data.json';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+      if (!confirm('确认清空所有测试数据？此操作不可恢复。')) {
+        return;
+      }
+      state.results = [];
+      saveState();
+      refreshAllViews();
+      showAlert('json-alert', '所有测试数据已清空。', 'ok');
+    }
+
+    function addGPU() {
+      const id = document.getElementById('gpu-id').value.trim();
+      const name = document.getElementById('gpu-name').value.trim();
+      const color = document.getElementById('gpu-color').value;
+      const category = document.getElementById('gpu-category').value;
+
+      if (!id || !name) {
+        showAlert('gpu-alert', '请填写 GPU ID 和显示名称。', 'err');
+        return;
+      }
+
+      if (state.gpus.some((gpu) => gpu.id === id)) {
+        showAlert('gpu-alert', 'GPU ID 已存在。', 'err');
+        return;
+      }
+
+      state.gpus.push({ id, name, color, category });
+      ensureStateDefaults();
+      saveState();
+      refreshAllViews();
+      showAlert('gpu-alert', `已添加 GPU 平台: ${name}`, 'ok');
+    }
+
+    async function copyText(text, alertId, successMessage) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.setAttribute('readonly', 'readonly');
+          textarea.style.position = 'fixed';
+          textarea.style.top = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        showAlert(alertId, successMessage, 'ok');
+      } catch (error) {
+        showAlert(alertId, '复制失败，请检查浏览器权限设置。', 'err');
+      }
+    }
+
+    function copyReport() {
+      copyText(generateReportMarkdown(), 'report-alert', '测试报告已复制到剪贴板。');
+    }
+
+    function copyData() {
+      copyText(JSON.stringify(state, null, 2), manageUnlocked ? 'json-alert' : 'report-alert', '测试数据已复制到剪贴板。');
+    }
+
+    function showAlert(id, message, type) {
+      const element = document.getElementById(id);
+      if (!element) return;
+      element.innerHTML = `<div class="alert alert-${type === 'ok' ? 'ok' : 'err'}">${message}</div>`;
+      setTimeout(() => {
+        element.innerHTML = '';
+      }, 3200);
+    }
+
+    function refreshAllViews() {
+      renderHeader();
+      renderReport();
+      renderTTI();
+      renderVideo();
+      renderAll();
+      renderConclusion();
+      renderConclusionMarkdown();
+      renderManageAccess();
+    }
+
+    document.querySelectorAll('#tab-tti .filter-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('#tab-tti .filter-btn').forEach((item) => item.classList.remove('active'));
+        button.classList.add('active');
+        renderTTITable(button.dataset.filter);
+      });
+    });
+
+    document.querySelectorAll('.nav-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach((item) => item.classList.remove('active'));
+        document.querySelectorAll('.section').forEach((section) => section.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+        if (tab.dataset.tab === 'manage') {
+          renderManageAccess();
+        }
+      });
+    });
+
+    (async () => {
+      loadManageAccess();
+      await initState();
+      refreshAllViews();
+    })();
+  </script>
+</body>
+</html>

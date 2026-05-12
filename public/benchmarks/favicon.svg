@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Benchmark icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b66c3" />
+      <stop offset="55%" stop-color="#0f8fe0" />
+      <stop offset="100%" stop-color="#14b8a6" />
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.72" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1" />
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="220" height="220" rx="56" fill="url(#bg)" />
+  <rect x="34" y="34" width="188" height="188" rx="42" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.18" />
+  <path d="M62 182h132" stroke="#ffffff" stroke-opacity="0.45" stroke-width="8" stroke-linecap="round" />
+  <path d="M62 72v110" stroke="#ffffff" stroke-opacity="0.24" stroke-width="8" stroke-linecap="round" />
+  <rect x="78" y="138" width="20" height="44" rx="10" fill="url(#bar)" />
+  <rect x="112" y="116" width="20" height="66" rx="10" fill="url(#bar)" />
+  <rect x="146" y="96" width="20" height="86" rx="10" fill="url(#bar)" />
+  <rect x="180" y="74" width="20" height="108" rx="10" fill="url(#bar)" />
+  <path d="M74 144c18-4 31-17 44-29 14-13 30-18 52-25" fill="none" stroke="#dff8ff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="74" cy="144" r="10" fill="#ffffff" />
+  <circle cx="118" cy="114" r="10" fill="#ffffff" />
+  <circle cx="170" cy="92" r="10" fill="#ffffff" />
+</svg>
