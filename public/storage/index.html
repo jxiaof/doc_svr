@@ -986,7 +986,7 @@
               <template #header><span style="font-weight:700;">⚙ 内部鉴权配置（HMAC-SHA256）</span></template>
               <el-form label-position="top" size="small">
                 <el-form-item label="Server SecretKey（config.server.secret_key）">
-                  <el-input v-model="state.internal.secretKey" placeholder="iTXKLT159LUxMfqRSgoxte98pjrPEH6u" show-password />
+                  <el-input v-model="state.internal.secretKey" placeholder="" show-password />
                 </el-form-item>
                 <div class="muted" style="font-size:11px;">签名算法：HMAC-SHA256(METHOD+PATH+timestamp+nonce, secretKey)，页面自动生成 X-Internal-Call / X-Internal-Signature / X-Internal-Timestamp / X-Internal-Nonce 4 个请求头。</div>
               </el-form>
@@ -1426,9 +1426,9 @@ const app = createApp({
     const state = reactive({
       activeTab: 'upload', apiBase: 'http://192.168.0.65:8080',
 	      urlMode: 'public',
-      loginMode: 'main', mainPhone: '18373639691', mainPassword: 'Admin@798!',
-      subUsername: 'felix-subaccount-01', subPassword: 'test1234',
-      activeTenant: 'tCROwgAd29A', tenantOptions: [], loadingTenants: false,
+      loginMode: 'main', mainPhone: '', mainPassword: '',
+      subUsername: '', subPassword: '',
+      activeTenant: '', tenantOptions: [], loadingTenants: false,
       token: '', currentUser: '', loggingIn: false,
       loadingResources: false, loadingQuota: false,
       listType: 'dataset', filterStatus: '', keyword: '',
@@ -1443,7 +1443,7 @@ const app = createApp({
       logFilter: '', logKeyword: '',
       errorDialog: { visible: false, title: '', message: '', detail: '', path: '', statusCode: '', requestId: '', suggestion: '' },
       tokenForm: { name: 'manual-token', scopes: 'storage:rw', expiresInDays: 30 },
-      internal: { secretKey: 'iTXKLT159LUxMfqRSgoxte98pjrPEH6u', activeGroup: 'ref', resourceId: '', resourceType: 'model', resourceOptions: [], loadingResourceOptions: false, tenantId: '', totalQuotaGB: 200, alertThreshold: 80, batchTenantIds: '', lastResponse: '', cleanupDryRun: true, cleanExpiredUploads: true, cleanupOlderThanDays: 30 },
+      internal: { secretKey: '', activeGroup: 'ref', resourceId: '', resourceType: 'model', resourceOptions: [], loadingResourceOptions: false, tenantId: '', totalQuotaGB: 200, alertThreshold: 80, batchTenantIds: '', lastResponse: '', cleanupDryRun: true, cleanExpiredUploads: true, cleanupOlderThanDays: 30 },
       playground: { method: 'GET', path: '/api/v2/storage/quota', headers: '{}', body: '', useAuth: true, response: '' },
       form: { resourceType: 'dataset', chunkSizeMB: 50, concurrency: 4, name: '', description: 'manual web test', labels: 'manual,e2e-test', modelType: 'llm', datasetType: 'text', trainScene: 'finetune', file: null, files: [] },
       upload: { working: false, uploadId: '', resourceId: '', status: 'idle', resourceStatus: '', progress: 0,
