@@ -6,10 +6,12 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>{{ .MetaTitle }}</title>
 	<meta name="description" content="{{ .MetaDescription }}">
+	<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 	<link rel="stylesheet" href="/assets/site.css">
 </head>
-<body>
-	<div class="page-shell">
+<body{{ if .BodyClass }} class="{{ .BodyClass }}"{{ end }}>
+	<div class="page-shell{{ if .ShellClass }} {{ .ShellClass }}{{ end }}">
+		{{ if not .HideHeader }}
 		<header class="site-header">
 			<a class="brand-block brand-home" href="/">
 				<span class="brand">{{ .Site.Name }}</span>
@@ -20,17 +22,20 @@
 				<span class="header-pill">自动路由已启用</span>
 			</div>
 		</header>
+		{{ end }}
 		<main class="page-main">
 {{ end }}
 
 {{ define "site_footer" }}
 		</main>
+		{{ if not .HideFooter }}
 		<footer class="site-footer">
 			<div>
 				<p class="footer-title">{{ .Site.Name }}</p>
 				<p>{{ .Site.Description }}</p>
 			</div>
 		</footer>
+		{{ end }}
 	</div>
 </body>
 </html>

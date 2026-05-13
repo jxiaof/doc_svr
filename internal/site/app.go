@@ -7,7 +7,9 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -27,12 +29,6 @@ type Profile struct {
 	Version     string
 }
 
-type StatCard struct {
-	Value string
-	Label string
-	Note  string
-}
-
 type PageEntry struct {
 	Title       string
 	Description string
@@ -42,16 +38,27 @@ type PageEntry struct {
 	Featured    bool
 }
 
-type NavItem struct {
-	Label  string
-	Path   string
-	Active bool
-}
-
 type BreadcrumbItem struct {
 	Label   string
 	Path    string
 	Current bool
+}
+
+type WorkspaceNavItem struct {
+	Label        string
+	Path         string
+	Active       bool
+	CompactLabel string
+}
+
+type WorkspaceNavGroup struct {
+	Label        string
+	Active       bool
+	Expanded     bool
+	Standalone   bool
+	CompactLabel string
+	Item         WorkspaceNavItem
+	Items        []WorkspaceNavItem
 }
 
 type PageData struct {
@@ -59,20 +66,22 @@ type PageData struct {
 	MetaDescription string
 	CurrentPath     string
 	Site            Profile
-	Stats           []StatCard
-	GeneratedAt     string
-	ServerAddr      string
-	WorkflowSteps   []string
-	DesignTokens    []string
 	AppPages        []PageEntry
 	AppPageCount    int
+	CurrentPage     PageEntry
+	RawPagePath     string
+	Breadcrumbs     []BreadcrumbItem
+	WorkspaceNav    []WorkspaceNavGroup
+	BodyClass       string
+	ShellClass      string
+	HideHeader      bool
+	HideFooter      bool
 }
 
 type Config struct {
 	Templates *template.Template
 	PublicFS  fs.FS
 	Profile   Profile
-	Port      string
 	Version   string
 }
 
@@ -82,7 +91,6 @@ type SiteApp struct {
 	profile      Profile
 	staticPages  []staticPage
 	generatedAt  string
-	serverAddr   string
 	healthStatus fiber.Map
 }
 
@@ -103,7 +111,6 @@ func NewSiteApp(config Config) (*SiteApp, error) {
 		profile:     config.Profile,
 		staticPages: staticPages,
 		generatedAt: time.Now().Format("2006-01-02 15:04 MST"),
-		serverAddr:  fmt.Sprintf("http://localhost:%s", config.Port),
 		healthStatus: fiber.Map{
 			"status":           "ok",
 			"service":          config.Profile.Name,
@@ -128,25 +135,26 @@ func (app *SiteApp) Register(router fiber.Router) error {
 }
 
 func (app *SiteApp) handleHome(c fiber.Ctx) error {
-	data := app.baseData("/")
-	data.MetaTitle = app.profile.Name + " | 已注册页面入口"
-	data.MetaDescription = app.profile.Description
-	data.Stats = []StatCard{
-		{Value: fmt.Sprintf("%d", data.AppPageCount), Label: "已注册页面", Note: "自动识别 public 目录下的 index 页面并生成首页入口。"},
-		{Value: "Auto Route", Label: "接入方式", Note: "新增 public/<route>/index.html 后，服务启动时自动挂载对应路由。"},
-		{Value: "Blue / White", Label: "展示风格", Note: "统一采用专业蓝白配色、稳定卡片栅格与清晰层级。"},
+	return renderTemplate(c, app.templates, "home", app.homeData())
+}
+
+func (app *SiteApp) WriteStaticHome(outputPath string) error {
+	markup, err := executeTemplate(app.templates, "home", app.homeData())
+	if err != nil {
+		return fmt.Errorf("render home template: %w", err)
 	}
-	data.WorkflowSteps = []string{
-		"在任意业务目录下生成独立页面后，将入口落到 public/<route>/index.html。",
-		"服务启动时自动识别并注册路由，首页卡片入口同步更新。",
-		"页面内部资源继续跟随各自目录分发，不需要额外手写路由。",
+
+	dir := filepath.Dir(outputPath)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create output directory: %w", err)
+		}
 	}
-	data.DesignTokens = []string{
-		"网站只保留单首页作为入口层，避免额外信息架构分散注意力。",
-		"整体采用专业蓝白配色、清晰层级和稳定卡片布局。",
-		"每个已注册页面都保留统一返回主页入口，方便来回切换。",
+
+	if err := os.WriteFile(outputPath, []byte(markup), 0o644); err != nil {
+		return fmt.Errorf("write static home: %w", err)
 	}
-	return renderTemplate(c, app.templates, "home", data)
+	return nil
 }
 
 func (app *SiteApp) handleHealthz(c fiber.Ctx) error {
@@ -169,13 +177,36 @@ func (app *SiteApp) registerStaticPage(router fiber.Router, page staticPage) err
 		return fmt.Errorf("static subfs %s: %w", page.Dir, err)
 	}
 
-	handler := func(c fiber.Ctx) error {
-		return sendStaticIndex(c, subFS, page.Path+"/")
+	rawPagePath := rawStaticPagePath(page.Path)
+
+	shellHandler := func(c fiber.Ctx) error {
+		data := app.baseData(page.Path)
+		data.MetaTitle = page.Title + " | " + app.profile.Name
+		data.MetaDescription = page.Description
+		data.CurrentPage = page.PageEntry
+		data.RawPagePath = rawPagePath + "/"
+		data.WorkspaceNav = buildWorkspaceNav(data.AppPages, page.Path)
+		data.BodyClass = "workspace-mode"
+		data.ShellClass = "page-shell-workspace"
+		data.HideHeader = true
+		data.HideFooter = true
+		data.Breadcrumbs = []BreadcrumbItem{
+			{Label: "首页", Path: "/"},
+			{Label: "页面", Path: "/#registered-pages"},
+			{Label: page.Title, Path: page.Path, Current: true},
+		}
+		return renderTemplate(c, app.templates, "page_shell", data)
 	}
 
-	router.Get(page.Path, handler)
-	router.Get(page.Path+"/", handler)
-	router.Use(page.Path+"/*", fiberstatic.New("", fiberstatic.Config{
+	rawHandler := func(c fiber.Ctx) error {
+		return sendStaticIndex(c, subFS, rawPagePath+"/")
+	}
+
+	router.Get(page.Path, shellHandler)
+	router.Get(page.Path+"/", shellHandler)
+	router.Get(rawPagePath, rawHandler)
+	router.Get(rawPagePath+"/", rawHandler)
+	router.Use(rawPagePath+"/*", fiberstatic.New("", fiberstatic.Config{
 		FS:            subFS,
 		Compress:      true,
 		ByteRange:     true,
@@ -194,11 +225,16 @@ func (app *SiteApp) baseData(currentPath string) PageData {
 	return PageData{
 		CurrentPath:  currentPath,
 		Site:         app.profile,
-		GeneratedAt:  app.generatedAt,
-		ServerAddr:   app.serverAddr,
 		AppPages:     appPages,
 		AppPageCount: len(appPages),
 	}
+}
+
+func (app *SiteApp) homeData() PageData {
+	data := app.baseData("/")
+	data.MetaTitle = app.profile.Name + " | 已注册页面入口"
+	data.MetaDescription = app.profile.Description
+	return data
 }
 
 func discoverStaticPages(publicFS fs.FS) ([]staticPage, error) {
@@ -249,14 +285,22 @@ func discoverStaticPages(publicFS fs.FS) ([]staticPage, error) {
 }
 
 func renderTemplate(c fiber.Ctx, templates *template.Template, name string, data PageData) error {
-	var buf bytes.Buffer
-	if err := templates.ExecuteTemplate(&buf, name, data); err != nil {
+	markup, err := executeTemplate(templates, name, data)
+	if err != nil {
 		log.Printf("level=error template=%s path=%s err=%v", name, c.Path(), err)
 		return fiber.NewError(http.StatusInternalServerError, "template render failed")
 	}
 
 	c.Set(fiber.HeaderContentType, "text/html; charset=utf-8")
-	return c.SendString(buf.String())
+	return c.SendString(markup)
+}
+
+func executeTemplate(templates *template.Template, name string, data PageData) (string, error) {
+	var buf bytes.Buffer
+	if err := templates.ExecuteTemplate(&buf, name, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func sendStaticIndex(c fiber.Ctx, contentFS fs.FS, baseHref string) error {
@@ -268,142 +312,124 @@ func sendStaticIndex(c fiber.Ctx, contentFS fs.FS, baseHref string) error {
 	if baseHref != "" && !strings.Contains(html, "<base ") {
 		html = strings.Replace(html, "<head>", "<head>\n  <base href=\""+baseHref+"\" />", 1)
 	}
-	html = injectStaticHomeBadge(html)
 	c.Set(fiber.HeaderContentType, "text/html; charset=utf-8")
 	return c.SendString(html)
 }
 
-func injectStaticHomeBadge(html string) string {
-	if strings.Contains(html, "data-site-home-badge") {
-		return html
+func rawStaticPagePath(pagePath string) string {
+	trimmed := strings.Trim(pagePath, "/")
+	if trimmed == "" {
+		return "/_pages/home"
+	}
+	return "/_pages/" + trimmed
+}
+
+func buildWorkspaceNav(appPages []PageEntry, currentPath string) []WorkspaceNavGroup {
+	type navGroupBuilder struct {
+		segment  string
+		label    string
+		root     *WorkspaceNavItem
+		children []WorkspaceNavItem
+		active   bool
 	}
 
-	style := `<style>
-		.site-home-badge {
-			position: fixed;
-			top: 16px;
-			left: 16px;
-			z-index: 9999;
-			display: inline-flex;
-			align-items: center;
-			gap: 10px;
-			padding: 10px 18px;
-			border-radius: 999px;
-			border: 1.5px solid rgba(21,94,239,.18);
-			background: rgba(255,255,255,0.55);
-			box-shadow: 0 12px 28px rgba(15,23,42,.14), 0 1.5px 4px rgba(21,94,239,.08);
-			backdrop-filter: blur(18px) saturate(180%);
-			-webkit-backdrop-filter: blur(18px) saturate(180%);
-			color: #155eef;
-			text-decoration: none;
-			font: 700 14px/1 "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;
-			transition: box-shadow 0.2s, border-color 0.2s, background 0.2s, top 0.2s, left 0.2s;
-			cursor: grab;
-			user-select: none;
-		}
-		.site-home-badge:active {
-			cursor: grabbing;
-		}
-		.site-home-badge:hover, .site-home-badge:focus {
-			background: rgba(255,255,255,0.75);
-			border-color: #60a5fa;
-			box-shadow: 0 16px 32px rgba(21,94,239,.18), 0 2px 8px rgba(21,94,239,.10);
-		}
-		.site-home-badge-mark {
-			width: 12px;
-			height: 12px;
-			border-radius: 999px;
-			background: linear-gradient(135deg,#155eef,#60a5fa);
-			box-shadow: 0 0 0 4px rgba(21,94,239,.12);
-		}
-		@media (max-width:760px) {
-			.site-home-badge {
-				top: auto;
-				bottom: 104px;
-				left: 12px;
-				padding: 10px 12px;
-			}
-		}
-	</style>
-	<script>
-	// 支持拖动主页按钮，优化为 transform 平滑移动
-	window.addEventListener('DOMContentLoaded', function() {
-		var badge = document.querySelector('.site-home-badge');
-		if (!badge) return;
-		let isDragging = false;
-		let startX, startY, startTop, startLeft, lastX = 16, lastY = 16;
-		// 初始位置
-		 badge.style.transform = "translate(" + lastX + "px, " + lastY + "px)";
-		badge.style.top = '0';
-		badge.style.left = '0';
-		badge.style.right = '';
-		badge.style.bottom = '';
-		badge.addEventListener('mousedown', function(e) {
-			if (e.button !== 0) return;
-			isDragging = true;
-			startX = e.clientX;
-			startY = e.clientY;
-			const matrix = window.getComputedStyle(badge).transform;
-			if (matrix && matrix !== 'none') {
-				const vals = matrix.match(/matrix\(([^)]+)\)/);
-				if (vals) {
-					const arr = vals[1].split(',');
-					lastX = parseFloat(arr[4]);
-					lastY = parseFloat(arr[5]);
-				}
-			}
-			badge.style.transition = 'none';
-			document.body.style.userSelect = 'none';
-		});
-		window.addEventListener('mousemove', function(e) {
-			if (!isDragging) return;
-			let dx = e.clientX - startX;
-			let dy = e.clientY - startY;
-			let newX = lastX + dx;
-			let newY = lastY + dy;
-			// 限制在窗口内
-			newX = Math.max(0, Math.min(window.innerWidth - badge.offsetWidth, newX));
-			newY = Math.max(0, Math.min(window.innerHeight - badge.offsetHeight, newY));
-			 badge.style.transform = "translate(" + newX + "px, " + newY + "px)";
-		});
-		window.addEventListener('mouseup', function(e) {
-			if (isDragging) {
-				// 记录最终位置
-				const matrix = window.getComputedStyle(badge).transform;
-				if (matrix && matrix !== 'none') {
-					const vals = matrix.match(/matrix\(([^)]+)\)/);
-					if (vals) {
-						const arr = vals[1].split(',');
-						lastX = parseFloat(arr[4]);
-						lastY = parseFloat(arr[5]);
-					}
-				}
-				isDragging = false;
-				badge.style.transition = '';
-				document.body.style.userSelect = '';
-			}
-		});
-	});
-	</script>`
-	html = strings.Replace(html, "</head>", style+"\n</head>", 1)
+	order := make([]string, 0, len(appPages))
+	builders := make(map[string]*navGroupBuilder, len(appPages))
 
-	bodyMarker := strings.Index(strings.ToLower(html), "<body")
-	if bodyMarker == -1 {
-		return html
+	for _, page := range appPages {
+		trimmed := strings.Trim(page.Path, "/")
+		if trimmed == "" {
+			continue
+		}
+
+		segments := strings.Split(trimmed, "/")
+		segment := segments[0]
+		builder, ok := builders[segment]
+		if !ok {
+			builder = &navGroupBuilder{segment: segment, label: humanizeSegment(segment)}
+			builders[segment] = builder
+			order = append(order, segment)
+		}
+
+		item := WorkspaceNavItem{
+			Label:        page.Title,
+			Path:         page.Path,
+			Active:       page.Path == currentPath,
+			CompactLabel: compactNavLabel(page.Path, page.Title),
+		}
+
+		if item.Active {
+			builder.active = true
+		}
+
+		if len(segments) == 1 {
+			builder.root = &item
+			if strings.TrimSpace(page.Title) != "" {
+				builder.label = page.Title
+			}
+			continue
+		}
+
+		builder.children = append(builder.children, item)
 	}
-	bodyOpenEnd := strings.Index(html[bodyMarker:], ">")
-	if bodyOpenEnd == -1 {
-		return html
+
+	navGroups := make([]WorkspaceNavGroup, 0, len(order))
+	for _, segment := range order {
+		builder := builders[segment]
+		if builder == nil {
+			continue
+		}
+
+		if len(builder.children) == 0 && builder.root != nil {
+			navGroups = append(navGroups, WorkspaceNavGroup{
+				Standalone:   true,
+				Label:        builder.root.Label,
+				Active:       builder.root.Active,
+				CompactLabel: builder.root.CompactLabel,
+				Item:         *builder.root,
+			})
+			continue
+		}
+
+		items := make([]WorkspaceNavItem, 0, len(builder.children)+1)
+		if builder.root != nil {
+			rootItem := *builder.root
+			if rootItem.Label == builder.label {
+				rootItem.Label = "概览"
+			}
+			items = append(items, rootItem)
+		}
+		items = append(items, builder.children...)
+
+		navGroups = append(navGroups, WorkspaceNavGroup{
+			Label:        builder.label,
+			Active:       builder.active,
+			Expanded:     builder.active,
+			CompactLabel: compactNavLabel(segment, builder.label),
+			Items:        items,
+		})
 	}
-	bodyOpenEnd += bodyMarker
-	badge := `
-			<a class="site-home-badge" data-site-home-badge href="/" aria-label="返回网站主页">
-				<span style="display:inline-flex;align-items:center;gap:4px">
-					<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8.75 3.5L5.25 7L8.75 10.5" stroke="#155eef" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-					返回主页
-				</span>
-			</a>`
-	return html[:bodyOpenEnd+1] + badge + html[bodyOpenEnd+1:]
+
+	return navGroups
+}
+
+func compactNavLabel(value string, fallback string) string {
+	source := strings.TrimSpace(value)
+	if strings.Contains(source, "/") {
+		source = path.Base(strings.Trim(source, "/"))
+	}
+	if source == "" {
+		source = strings.TrimSpace(fallback)
+	}
+	if source == "" {
+		source = "PAGE"
+	}
+
+	runes := []rune(strings.ToUpper(source))
+	if len(runes) > 3 {
+		runes = runes[:3]
+	}
+	return string(runes)
 }
 
 type staticMeta struct {

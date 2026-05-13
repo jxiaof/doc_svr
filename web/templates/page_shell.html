@@ -1,0 +1,266 @@
+{{ define "page_shell" }}
+{{ template "site_head" . }}
+
+<section class="workspace-shell" data-workspace-shell>
+	<button class="workspace-backdrop" type="button" aria-label="关闭导航" data-workspace-backdrop></button>
+	<aside class="workspace-sidebar panel-glass" id="workspace-sidebar" data-workspace-sidebar>
+		<div class="workspace-sidebar-head">
+			<div class="workspace-sidebar-title-block">
+				<h1 class="workspace-title">页面导航</h1>
+			</div>
+			<button class="workspace-sidebar-close" type="button" data-workspace-close aria-controls="workspace-sidebar" aria-expanded="true" aria-label="收起导航">
+				<span class="workspace-toggle-icon is-chevron" aria-hidden="true"></span>
+			</button>
+		</div>
+		<div class="workspace-sidebar-group">
+			<nav class="workspace-tree" aria-label="已注册页面">
+				{{ range .WorkspaceNav }}
+				{{ if .Standalone }}
+				<a class="workspace-tree-link{{ if .Item.Active }} is-active{{ end }}" href="{{ .Item.Path }}" title="{{ .Item.Label }}" data-workspace-link>
+					<span class="workspace-tree-badge">{{ .Item.CompactLabel }}</span>
+					<span class="workspace-tree-label">{{ .Item.Label }}</span>
+				</a>
+				{{ else }}
+				<details class="workspace-tree-group{{ if .Active }} is-active{{ end }}"{{ if .Expanded }} open{{ end }}>
+					<summary class="workspace-tree-summary">
+						<span class="workspace-tree-summary-main">
+							<span class="workspace-tree-badge">{{ .CompactLabel }}</span>
+							<span class="workspace-tree-label">{{ .Label }}</span>
+						</span>
+						<span class="workspace-tree-chevron" aria-hidden="true"></span>
+					</summary>
+					<div class="workspace-tree-items">
+						{{ range .Items }}
+						<a class="workspace-tree-child{{ if .Active }} is-active{{ end }}" href="{{ .Path }}" title="{{ .Label }}" data-workspace-link>
+							<span class="workspace-tree-dot" aria-hidden="true"></span>
+							<span class="workspace-tree-child-label">{{ .Label }}</span>
+						</a>
+						{{ end }}
+					</div>
+				</details>
+				{{ end }}
+				{{ end }}
+			</nav>
+		</div>
+	</aside>
+
+	<div class="workspace-stage">
+		<div class="workspace-toolbar panel-glass" data-workspace-toolbar>
+			<div class="workspace-toolbar-left">
+				<button class="workspace-nav-toggle" type="button" data-workspace-toggle aria-controls="workspace-sidebar" aria-expanded="true" aria-label="切换导航">
+					<span class="workspace-toggle-icon is-menu" aria-hidden="true"></span>
+					<span class="workspace-nav-toggle-label">导航</span>
+				</button>
+				<div class="workspace-breadcrumbs" aria-label="面包屑">
+					{{ range .Breadcrumbs }}
+					{{ if .Current }}
+					<span class="workspace-breadcrumb is-current" aria-current="page">{{ .Label }}</span>
+					{{ else }}
+						<a class="workspace-breadcrumb" href="{{ .Path }}" data-workspace-link>{{ .Label }}</a>
+					{{ end }}
+					{{ end }}
+				</div>
+			</div>
+			<div class="workspace-toolbar-actions">
+				<a class="workspace-raw-link" href="{{ .RawPagePath }}" target="_blank" rel="noreferrer">新窗口打开原页面</a>
+			</div>
+		</div>
+
+		<div class="workspace-frame panel-solid">
+			<div class="workspace-frame-viewport is-loading" data-workspace-frame>
+				<iframe
+					class="workspace-iframe"
+					data-workspace-iframe
+					title="{{ .CurrentPage.Title }}"
+					src="{{ .RawPagePath }}"
+					loading="lazy"
+					referrerpolicy="strict-origin-when-cross-origin">
+				</iframe>
+			</div>
+		</div>
+	</div>
+</section>
+
+<script>
+	(function() {
+		const shell = document.querySelector('[data-workspace-shell]');
+		if (!shell) {
+			return;
+		}
+
+		const toggleButton = shell.querySelector('[data-workspace-toggle]');
+		const closeButton = shell.querySelector('[data-workspace-close]');
+		const backdrop = shell.querySelector('[data-workspace-backdrop]');
+		const toolbar = shell.querySelector('[data-workspace-toolbar]');
+		const frame = shell.querySelector('[data-workspace-frame]');
+		const iframe = shell.querySelector('[data-workspace-iframe]');
+		const mobileQuery = window.matchMedia('(max-width: 900px)');
+		const storageKey = 'doc-svr-workspace-sidebar';
+		let layoutFrame = 0;
+
+		function syncAria() {
+			const expanded = mobileQuery.matches
+				? shell.classList.contains('is-drawer-open')
+				: !shell.classList.contains('is-collapsed');
+			if (toggleButton) {
+				toggleButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+			}
+			if (closeButton) {
+				closeButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+			}
+		}
+
+		function persistDesktopState() {
+			if (mobileQuery.matches) {
+				return;
+			}
+			try {
+				window.localStorage.setItem(storageKey, shell.classList.contains('is-collapsed') ? 'collapsed' : 'expanded');
+			} catch (error) {
+				// ignore storage failures
+			}
+		}
+
+		function closeDrawer() {
+			shell.classList.remove('is-drawer-open');
+			document.body.classList.remove('workspace-drawer-open');
+			syncAria();
+		}
+
+		function setFrameLoading(loading) {
+			if (!frame) {
+				return;
+			}
+			frame.classList.toggle('is-loading', loading);
+		}
+
+		function syncBodyState() {
+			document.body.classList.toggle('workspace-drawer-open', mobileQuery.matches && shell.classList.contains('is-drawer-open'));
+		}
+
+		function syncFrameHeight() {
+			if (!frame || !toolbar) {
+				return;
+			}
+
+			const shellStyles = window.getComputedStyle(shell);
+			const stage = shell.querySelector('.workspace-stage');
+			const stageStyles = stage ? window.getComputedStyle(stage) : null;
+			const rowGap = stageStyles ? parseFloat(stageStyles.rowGap || stageStyles.gap || '10') : 10;
+			const bottomPadding = parseFloat(shellStyles.paddingBottom || '0');
+			const toolbarBottom = toolbar.getBoundingClientRect().bottom;
+			const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+			const availableHeight = viewportHeight - toolbarBottom - rowGap - bottomPadding;
+			const minimumHeight = mobileQuery.matches ? Math.round(viewportHeight * 0.62) : Math.round(viewportHeight * 0.72);
+			frame.style.setProperty('--workspace-frame-height', Math.max(availableHeight, minimumHeight) + 'px');
+		}
+
+		function scheduleFrameHeightSync() {
+			if (layoutFrame) {
+				window.cancelAnimationFrame(layoutFrame);
+			}
+			layoutFrame = window.requestAnimationFrame(function() {
+				layoutFrame = 0;
+				syncFrameHeight();
+			});
+		}
+
+		function toggleWorkspace() {
+			if (mobileQuery.matches) {
+				shell.classList.toggle('is-drawer-open');
+				syncBodyState();
+				syncAria();
+				scheduleFrameHeightSync();
+				return;
+			}
+
+			shell.classList.toggle('is-collapsed');
+			persistDesktopState();
+			syncAria();
+			scheduleFrameHeightSync();
+		}
+
+		function bindMediaQuery(mediaQuery, listener) {
+			if (typeof mediaQuery.addEventListener === 'function') {
+				mediaQuery.addEventListener('change', listener);
+				return;
+			}
+			mediaQuery.addListener(listener);
+		}
+
+		function isPlainNavigation(event, link) {
+			if (!link) {
+				return false;
+			}
+			if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+				return false;
+			}
+			if (link.target && link.target !== '_self') {
+				return false;
+			}
+			if (link.hasAttribute('download')) {
+				return false;
+			}
+			const href = link.getAttribute('href');
+			if (!href || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) {
+				return false;
+			}
+			return true;
+		}
+
+		try {
+			if (!mobileQuery.matches && window.localStorage.getItem(storageKey) === 'collapsed') {
+				shell.classList.add('is-collapsed');
+			}
+		} catch (error) {
+			// ignore storage failures
+		}
+
+		if (toggleButton) {
+			toggleButton.addEventListener('click', toggleWorkspace);
+		}
+		if (closeButton) {
+			closeButton.addEventListener('click', toggleWorkspace);
+		}
+		if (backdrop) {
+			backdrop.addEventListener('click', closeDrawer);
+		}
+		if (iframe) {
+			iframe.addEventListener('load', function() {
+				setFrameLoading(false);
+				scheduleFrameHeightSync();
+			});
+		}
+
+		shell.addEventListener('click', function(event) {
+			const link = event.target.closest('[data-workspace-link]');
+			if (!link) {
+				return;
+			}
+
+			if (mobileQuery.matches) {
+				closeDrawer();
+			}
+
+			if (!isPlainNavigation(event, link)) {
+				return;
+			}
+			setFrameLoading(true);
+		});
+
+		bindMediaQuery(mobileQuery, function() {
+			closeDrawer();
+			syncAria();
+			syncBodyState();
+			scheduleFrameHeightSync();
+		});
+		window.addEventListener('resize', scheduleFrameHeightSync, { passive: true });
+		window.addEventListener('scroll', scheduleFrameHeightSync, { passive: true });
+
+		syncAria();
+		syncBodyState();
+		scheduleFrameHeightSync();
+	})();
+</script>
+{{ template "site_footer" . }}
+{{ end }}

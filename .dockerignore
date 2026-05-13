@@ -3,3 +3,7 @@
 bin
 dist
 README.md
+.dockerignore
+dockerfile
+.vscode
+.env

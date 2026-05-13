@@ -8,9 +8,10 @@
 2. 初始化 template.FuncMap，用于首页模板里的路由名和占位卡片计算
 3. 创建 fiber.App，并统一配置超时、错误处理和 ServerHeader
 4. 注册通用中间件：requestid、logger、etag、compress
-5. 通过 /assets 暴露 web/assets 下的共享静态资源
-6. 初始化 internal/site.SiteApp
-7. 由 SiteApp 统一注册首页、静态子页、healthz 和 robots.txt
+5. 注册 favicon 路由，避免浏览器默认请求 /favicon.ico 时出现 404
+6. 通过 /assets 暴露 web/assets 下的共享静态资源
+7. 初始化 internal/site.SiteApp
+8. 由 SiteApp 统一注册首页、静态子页、healthz 和 robots.txt
 
 ## 中间件说明
 
@@ -36,8 +37,12 @@
 - /：首页
 - /healthz：健康检查
 - /robots.txt：机器人协议
-- /<page>：public 下自动发现的页面入口
-- /<page>/*：对应页面目录里的静态资源
+- /favicon.ico、/favicon.svg：图标入口
+- /<page>：带 workspace 壳层的页面入口
+- /_pages/<page>/：对应页面的原始 index.html
+- /_pages/<page>/*：对应页面目录里的静态资源
+
+这样做的目的是把共享导航、breadcrumb、移动端抽屉等 UI 固定在壳层，而把原始业务页面继续隔离在 iframe 里，避免互相污染样式或脚本。
 
 ## 如何新增页面
 
@@ -57,7 +62,7 @@ public/
     └── style.css
 ```
 
-服务会自动把它挂成 /notify。
+服务会自动把它挂成 /notify，同时原始页面会从 /_pages/notify/ 提供给 iframe 壳层使用。
 
 ## 如何新增服务端能力
 
@@ -73,6 +78,7 @@ public/
 
 - 项目默认使用 vendor 构建，命令里会显式带 -mod=vendor
 - public 内容会进入 embed.FS，因此所有子页面都会被编译进二进制
+- 首页模板可以通过 `go run . generate-home --output public/index.html` 单独落盘
 - 当前没有自动化测试，主要依赖 go build ./... 做最小校验
 
 ## 推荐的后续演进

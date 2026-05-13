@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"html/template"
 	"io/fs"
 	"log"
@@ -23,10 +24,21 @@ import (
 
 var version = "dev"
 
+type runtimeOptions struct {
+	command string
+	port    string
+	output  string
+}
+
 //go:embed web/templates web/assets public
 var embeddedFiles embed.FS
 
 func main() {
+	options, err := parseRuntimeOptions(os.Args[1:], getEnv("PORT", "4000"))
+	if err != nil {
+		log.Fatalf("parse runtime options: %v", err)
+	}
+
 	templates, err := template.New("site").Funcs(template.FuncMap{
 		"formatDate": func(value time.Time) string {
 			if value.IsZero() {
@@ -75,7 +87,25 @@ func main() {
 		Version:     version,
 	}
 
-	port := getEnv("PORT", "3000")
+	port := options.port
+	siteApp, err := site.NewSiteApp(site.Config{
+		Templates: templates,
+		PublicFS:  publicFS,
+		Profile:   profile,
+		Version:   version,
+	})
+	if err != nil {
+		log.Fatalf("init site app: %v", err)
+	}
+
+	if options.command == "generate-home" {
+		if err := siteApp.WriteStaticHome(options.output); err != nil {
+			log.Fatalf("generate home: %v", err)
+		}
+		log.Printf("level=info generated_home=%s", options.output)
+		return
+	}
+
 	app := fiber.New(fiber.Config{
 		AppName:       profile.Name,
 		CaseSensitive: false,
@@ -103,6 +133,12 @@ func main() {
 	app.Use(compress.New(compress.Config{
 		Level: compress.LevelBestCompression,
 	}))
+	app.Get("/favicon.ico", func(c fiber.Ctx) error {
+		return c.Redirect().To("/assets/favicon.svg")
+	})
+	app.Get("/favicon.svg", func(c fiber.Ctx) error {
+		return c.Redirect().To("/assets/favicon.svg")
+	})
 	app.Use("/assets", fiberstatic.New("", fiberstatic.Config{
 		FS:            assetsFS,
 		Compress:      true,
@@ -110,17 +146,6 @@ func main() {
 		CacheDuration: 24 * time.Hour,
 		MaxAge:        86400,
 	}))
-
-	siteApp, err := site.NewSiteApp(site.Config{
-		Templates: templates,
-		PublicFS:  publicFS,
-		Profile:   profile,
-		Port:      port,
-		Version:   version,
-	})
-	if err != nil {
-		log.Fatalf("init site app: %v", err)
-	}
 
 	if err := siteApp.Register(app); err != nil {
 		log.Fatalf("register site routes: %v", err)
@@ -137,4 +162,47 @@ func getEnv(key string, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func parseRuntimeOptions(args []string, defaultPort string) (runtimeOptions, error) {
+	options := runtimeOptions{
+		command: "serve",
+		port:    defaultPort,
+		output:  "public/index.html",
+	}
+
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		options.command = args[0]
+		args = args[1:]
+	}
+
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--port":
+			index++
+			if index >= len(args) {
+				return runtimeOptions{}, errors.New("--port requires a value")
+			}
+			options.port = strings.TrimSpace(args[index])
+		case "--output":
+			index++
+			if index >= len(args) {
+				return runtimeOptions{}, errors.New("--output requires a value")
+			}
+			options.output = strings.TrimSpace(args[index])
+		default:
+			return runtimeOptions{}, errors.New("unsupported argument: " + args[index])
+		}
+	}
+
+	if options.command != "serve" && options.command != "generate-home" {
+		return runtimeOptions{}, errors.New("unsupported command: " + options.command)
+	}
+	if options.port == "" {
+		options.port = defaultPort
+	}
+	if options.output == "" {
+		options.output = "public/index.html"
+	}
+	return options, nil
 }
