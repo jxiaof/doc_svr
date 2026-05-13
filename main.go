@@ -65,8 +65,8 @@ func main() {
 	}
 
 	profile := site.Profile{
-		Name:        "Doc Svr",
-		Tagline:     "本地页面入口服务",
+		Name:        "Docs",
+		Tagline:     "本地文档入口服务",
 		Description: "统一承载多个已注册本地页面入口，并自动分发各页面的本地静态资源。",
 		Owner:       "tenyunw",
 		Email:       "hujianghong@tenyunw.com",
