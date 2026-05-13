@@ -1,76 +1,49 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+# Go 1.26.3 自动安装脚本（Ubuntu 全局持久化版）
 
-GO_VERSION="${GO_VERSION:-1.26.3}"
-GO_DOWNLOAD_BASE="${GO_DOWNLOAD_BASE:-https://golang.google.cn/dl}"
-GO_PROXY="${GO_PROXY:-https://goproxy.cn,direct}"
-GO_SUMDB="${GO_SUMDB:-sum.golang.google.cn}"
-INSTALL_ROOT="${INSTALL_ROOT:-/usr/local}"
-PROXY_URL="${PROXY_URL:-}"
-BASHRC_PATH="${BASHRC_PATH:-$HOME/.bashrc}"
+# 1. 定义版本（可自行修改）
+GO_VERSION="1.26.3"
+GO_FILE="go${GO_VERSION}.linux-amd64.tar.gz"
+GO_URL="https://go.dev/dl/${GO_FILE}"
 
-if [[ -n "$PROXY_URL" ]]; then
-  export http_proxy="$PROXY_URL"
-  export https_proxy="$PROXY_URL"
-  export all_proxy="$PROXY_URL"
+# 2. 下载 Go 安装包（已存在则跳过）
+echo "===== 开始下载 Go ${GO_VERSION} ====="
+if [ ! -f "${GO_FILE}" ]; then
+    wget ${GO_URL}
+else
+    echo "安装包已存在，跳过下载"
 fi
 
+# 3. 清理旧版本 Go
+echo "===== 清理旧版本 Go ====="
+sudo rm -rf /usr/local/go
 
-ARCHIVE="go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
-DOWNLOAD_URL="${GO_DOWNLOAD_BASE}/${ARCHIVE}"
-TMP_ARCHIVE="/tmp/${ARCHIVE}"
+# 4. 解压到官方推荐目录 /usr/local
+echo "===== 解压安装 Go ====="
+sudo tar -C /usr/local -xzf ${GO_FILE}
 
-ensure_bashrc_settings() {
-  local managed_block
-  managed_block=$(cat <<EOF
-# >>> go env >>>
-export PATH=/usr/local/go/bin:\$PATH
-export GOPROXY=${GO_PROXY}
-export GOSUMDB=${GO_SUMDB}
-# <<< go env <<<
-EOF
-)
+# 5. 永久配置环境变量（写入系统全局配置 /etc/profile，所有用户+重启永久生效）
+echo "===== 配置永久环境变量 ====="
+PROFILE_PATH="/etc/profile"
+# 避免重复写入
+if ! grep -q "/usr/local/go/bin" ${PROFILE_PATH}; then
+    echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee -a ${PROFILE_PATH}
+    echo 'export GOPATH=$HOME/go' | sudo tee -a ${PROFILE_PATH}
+    echo 'export PATH=$PATH:$GOPATH/bin' | sudo tee -a ${PROFILE_PATH}
+fi
 
-  if [[ -f "$BASHRC_PATH" ]] && grep -q '# >>> go env >>>' "$BASHRC_PATH"; then
-    python3 - "$BASHRC_PATH" "$managed_block" <<'PY'
-import pathlib
-import sys
+# 6. 立即生效环境变量（当前终端直接用）
+source ${PROFILE_PATH}
 
-path = pathlib.Path(sys.argv[1])
-block = sys.argv[2]
-text = path.read_text()
-start = text.index("# >>> go env >>>")
-end = text.index("# <<< go env <<<", start) + len("# <<< go env <<<")
-replacement = block.rstrip("\n")
-updated = text[:start] + replacement + text[end:]
-if not updated.endswith("\n"):
-    updated += "\n"
-path.write_text(updated)
-PY
-    return
-  fi
+# 7. 配置 Go 模块、国内代理、校验库（永久生效）
+echo "===== 配置 Go 国内代理 ====="
+go env -w GO111MODULE=on
+go env -w GOPROXY=https://goproxy.cn,direct
+go env -w GOSUMDB=sum.golang.google.cn
 
-  if [[ ! -f "$BASHRC_PATH" ]]; then
-    touch "$BASHRC_PATH"
-  fi
+# 8. 验证安装结果
+echo "===== 安装完成，验证版本 ====="
+go version
+go env | grep -E "GOPROXY|GO111MODULE|GOROOT"
 
-  printf '\n%s\n' "$managed_block" >> "$BASHRC_PATH"
-}
-
-echo "downloading ${DOWNLOAD_URL}"
-curl -fL --retry 3 --connect-timeout 15 -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
-printf '%s  %s\n' "$GO_SHA256" "$TMP_ARCHIVE" | sha256sum -c -
-
-rm -rf "${INSTALL_ROOT}/go"
-tar -C "$INSTALL_ROOT" -xzf "$TMP_ARCHIVE"
-ln -sf "${INSTALL_ROOT}/go/bin/go" /usr/local/bin/go
-ln -sf "${INSTALL_ROOT}/go/bin/gofmt" /usr/local/bin/gofmt
-
-/usr/local/bin/go env -w GOPROXY="$GO_PROXY"
-/usr/local/bin/go env -w GOSUMDB="$GO_SUMDB"
-ensure_bashrc_settings
-
-echo "Go installed: $(/usr/local/bin/go version)"
-echo "GOPROXY set to: $(/usr/local/bin/go env GOPROXY)"
-echo "GOSUMDB set to: $(/usr/local/bin/go env GOSUMDB)"
-echo "bashrc updated: ${BASHRC_PATH}"
+echo -e "\n✅ Go ${GO_VERSION} 安装成功！环境变量已永久持久化，重启系统依然有效！"
