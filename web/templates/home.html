@@ -1,0 +1,92 @@
+{{ define "home" }}
+{{ template "site_head" . }}
+<section class="home-library">
+	<div class="library-stage">
+
+		<div class="bookshelf-frame" id="registered-pages">
+			<div class="bookshelf-grid" data-bookshelf-grid>
+				{{ if .AppPages }}
+				{{ range .AppPages }}
+				<div class="bookshelf-slot">
+					<a class="shelf-book" href="{{ .Path }}" data-shelf-link aria-label="打开 {{ routeTail .Path }} 页面">
+						<span class="shelf-book-badge">HTML</span>
+						<span class="shelf-book-route">{{ routeTail .Path }}</span>
+						<span class="shelf-book-title">{{ .Title }}</span>
+						<span class="shelf-book-meta">{{ .Path }}</span>
+						<span class="shelf-book-action">打开页面</span>
+					</a>
+				</div>
+				{{ end }}
+				{{ range shelfPadding (len .AppPages) }}
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-route">待注册</span>
+						<span class="shelf-book-title">待新增</span>
+						<span class="shelf-book-meta">Reserved slot</span>
+					</div>
+				</div>
+				{{ end }}
+				{{ else }}
+				{{ range shelfPadding 0 }}
+				<div class="bookshelf-slot is-placeholder">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-route">待注册</span>
+						<span class="shelf-book-title">待新增</span>
+						<span class="shelf-book-meta">Reserved slot</span>
+					</div>
+				</div>
+				{{ end }}
+				{{ end }}
+			</div>
+			{{ if not .AppPages }}
+			<div class="library-empty" role="status">
+				<p>当前还没有注册页面，书架已预留 12 个位置，后续会自动替换成真实入口。</p>
+			</div>
+			{{ end }}
+		</div>
+	</div>
+</section>
+<script>
+	(function() {
+		const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+		const links = document.querySelectorAll("[data-shelf-link]");
+		let isLeaving = false;
+
+		links.forEach((link) => {
+			link.addEventListener("click", (event) => {
+				if (
+					prefersReducedMotion.matches ||
+					event.defaultPrevented ||
+					event.button !== 0 ||
+					event.metaKey ||
+					event.ctrlKey ||
+					event.shiftKey ||
+					event.altKey
+				) {
+					return;
+				}
+
+				const href = link.getAttribute("href");
+				if (!href || href.startsWith("#")) {
+					return;
+				}
+
+				event.preventDefault();
+				if (isLeaving) {
+					return;
+				}
+
+				isLeaving = true;
+				document.body.classList.add("home-transitioning");
+				link.classList.add("is-opening");
+				window.setTimeout(() => {
+					window.location.assign(href);
+				}, 240);
+			});
+		});
+	})();
+</script>
+{{ template "site_footer" . }}
+{{ end }}

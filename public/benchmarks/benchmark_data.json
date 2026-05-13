@@ -4,32 +4,64 @@
     "description": "使用 vbench 数据集，对不同 GPU 平台在 text-to-image / text-to-video / image-to-video 任务上进行 Serving Benchmark 测试",
     "updated": "2026-05-11",
     "tool": "serving benchmark",
-    "dataset": "vbench"
+    "dataset": "vbench",
+    "cost_model": {
+      "currency": "CNY",
+      "seconds_per_day": 86400,
+      "amortization_days": 1095,
+      "machine_gpu_count": 8,
+      "instances_per_machine": 8,
+      "notes": "按 8 卡整机购置成本做 3 年摊销估算，不含电费、带宽、人力和机房成本。"
+    }
   },
   "gpus": [
     {
       "id": "h800",
       "name": "H800 Hopper FA3",
       "category": "datacenter",
-      "color": "#0b66c3"
+      "color": "#0b66c3",
+      "cost": {
+        "machine_price_wan_cny": 291,
+        "machine_memory_tb": 2,
+        "machine_gpu_count": 8,
+        "instances_per_machine": 8
+      }
     },
     {
       "id": "rtx_pro_6000",
       "name": "RTX Pro 6000",
       "category": "workstation",
-      "color": "#2b7fc4"
+      "color": "#2b7fc4",
+      "cost": {
+        "machine_price_wan_cny": 130.4,
+        "machine_memory_tb": 2,
+        "machine_gpu_count": 8,
+        "instances_per_machine": 8
+      }
     },
     {
       "id": "rtx_5090",
       "name": "RTX 5090",
       "category": "consumer",
-      "color": "#4b97c8"
+      "color": "#4b97c8",
+      "cost": {
+        "machine_price_wan_cny": 52,
+        "machine_memory_tb": 1,
+        "machine_gpu_count": 8,
+        "instances_per_machine": 8
+      }
     },
     {
       "id": "rtx_6000d",
       "name": "RTX 6000D",
       "category": "workstation",
-      "color": "#7eaeca"
+      "color": "#7eaeca",
+      "cost": {
+        "machine_price_wan_cny": 71.12,
+        "machine_memory_tb": 1,
+        "machine_gpu_count": 8,
+        "instances_per_machine": 8
+      }
     }
   ],
   "results": [

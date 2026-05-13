@@ -1,0 +1,37 @@
+{{ define "site_head" }}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ .MetaTitle }}</title>
+	<meta name="description" content="{{ .MetaDescription }}">
+	<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+	<div class="page-shell">
+		<header class="site-header">
+			<a class="brand-block brand-home" href="/">
+				<span class="brand">{{ .Site.Name }}</span>
+				<span class="brand-copy">{{ .Site.Tagline }}</span>
+			</a>
+			<div class="site-header-meta" aria-label="站点状态">
+				<span class="header-pill">已注册 {{ .AppPageCount }} 个页面</span>
+				<span class="header-pill">自动路由已启用</span>
+			</div>
+		</header>
+		<main class="page-main">
+{{ end }}
+
+{{ define "site_footer" }}
+		</main>
+		<footer class="site-footer">
+			<div>
+				<p class="footer-title">{{ .Site.Name }}</p>
+				<p>{{ .Site.Description }}</p>
+			</div>
+		</footer>
+	</div>
+</body>
+</html>
+{{ end }}
