@@ -75,7 +75,7 @@ func main() {
 		Version:     version,
 	}
 
-	port := getEnv("PORT", "4000")
+	port := getEnv("PORT", "3000")
 	app := fiber.New(fiber.Config{
 		AppName:       profile.Name,
 		CaseSensitive: false,

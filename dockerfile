@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.3-alpine AS builder
 
 ARG VERSION=dev
 WORKDIR /src
@@ -10,7 +10,7 @@ COPY vendor ./vendor
 COPY main.go ./main.go
 COPY internal ./internal
 COPY web ./web
-COPY content ./content
+COPY public ./public
 
 RUN CGO_ENABLED=0 GOFLAGS=-mod=vendor go build \
 	-trimpath \

@@ -1,76 +1,49 @@
 # Doc Svr
 
-一个基于 Go Fiber v3 的静态网页渲染服务器，用来承载数据展示页面、博客更新和轻量知识库内容。站点内容使用 Markdown 编写，模板和静态资源打包进二进制，适合单文件部署和容器化交付。
+一个基于 Go Fiber v3 的本地静态页面入口服务。它会在启动时扫描 public 目录下的子页面入口，把 public/<route>/index.html 自动挂载成可访问路由，并通过首页统一展示所有已注册页面。
 
-## 适合场景
+当前项目不是 Markdown 博客渲染器，而是一个轻量的静态页面聚合壳层：模板、样式和 public 下的页面资源都会通过 embed.FS 打进单个二进制，便于本地运行、容器部署和内网分发。
 
-- 团队周报、月报和运营数据简报
-- 产品博客、更新日志和专题文章
-- 内部知识库、技术说明页、项目首页
+## 当前能力
 
-## 技术选型
-
-- Go Fiber v3：负责 HTTP 路由、中间件和服务启动
-- compress + etag + requestid + logger：负责压缩、缓存标识和基础日志
-- Goldmark：渲染 Markdown 为 HTML
-- html/template：服务端模板渲染，避免引入额外前端构建链
-- embed.FS：把模板、样式和内容打包进二进制
+- 自动发现 public/**/index.html 并注册为路由
+- 首页统一展示所有已注册页面入口
+- 子页面自动注入返回导航，方便回到首页或页面目录
+- 提供 healthz、robots.txt 和静态资源缓存配置
+- 使用 vendor 模式构建，降低外部依赖波动带来的影响
 
 ## 当前目录结构
 
 ```text
 .
-├── build.sh                # 脚本入口，构建/运行/校验/镜像
-├── content/
-│   └── posts/              # Markdown 内容
-├── dockerfile              # 多阶段容器构建
+├── .dockerignore           # Docker 构建上下文过滤
+├── README.md               # 项目总说明
+├── build.sh                # 构建/运行/校验/镜像入口
+├── deploy/                 # 预留部署目录，当前为空
+├── dockerfile              # 多阶段镜像构建文件
+├── docs/                   # 维护文档与 Fiber 使用说明
+├── go.mod
+├── go.sum
 ├── internal/
-│   └── site/               # 内容加载与 Markdown 渲染
-├── main.go                 # Fiber 应用入口与路由
+│   └── site/               # 站点路由、页面发现、模板渲染
+├── main.go                 # Fiber 应用入口
 ├── makefile                # 常用开发命令
-├── web/
-│   ├── assets/             # 样式资源
-│   └── templates/          # HTML 模板
-└── vendor/                 # vendored 依赖，默认走 -mod=vendor
+├── public/                 # 实际被扫描并注册的静态页面目录
+│   ├── benchmarks/
+│   ├── notify/
+│   └── storage/
+├── scripts/
+│   ├── install.sh          # 环境安装脚本
+│   └── run.sh              # 本地后台运行脚本
+├── vendor/                 # vendored 依赖
+└── web/
+    ├── assets/             # 首页和共享样式
+    └── templates/          # 服务端模板
 ```
 
-## 页面与设计规范
+## 运行方式
 
-- 首页：Hero + 指标卡片 + 工作流说明 + 精选文章
-- 列表页：文章归档 + 侧边规范说明
-- 详情页：统一长文阅读布局，适合博客与数据解读
-- 配色：深青绿作为主色，铜橙做强调色，暖米色背景强化专业内容站点氛围
-- 响应式：桌面双列，移动端自动回落为单列
-
-## Markdown 规范
-
-文章存放在 content/posts，文件名即 slug，例如 content/posts/weekly-ops.md 对应 /blog/weekly-ops。
-
-每篇文章建议包含 Front Matter：
-
-```yaml
----
-title: 本周数据复盘
-summary: 首页摘要与 SEO 描述
-date: 2026-05-12
-tags:
-  - weekly
-  - dashboard
-featured: true
----
-```
-
-字段说明：
-
-- title：文章标题
-- summary：摘要，建议 60 到 110 字
-- date：发布时间，支持 2006-01-02 / RFC3339
-- tags：标签数组
-- featured：首页精选位
-
-项目额外提供了 content/posts/_template.md 作为起稿模板。以 _ 开头的 Markdown 文件不会被渲染成文章。
-
-## 本地运行
+默认端口是 3000，可通过 PORT 覆盖。
 
 ```bash
 make run
@@ -82,7 +55,13 @@ make run
 ./build.sh run
 ```
 
-默认地址： http://localhost:3000
+后台启动：
+
+```bash
+./scripts/run.sh
+```
+
+访问地址： http://localhost:3000
 
 ## 构建与校验
 
@@ -108,15 +87,53 @@ make check
 make docker-build
 ```
 
+或：
+
+```bash
+./build.sh docker
+```
+
 运行容器：
 
 ```bash
-docker run --rm -p 3000:3000 doc-svr:dev
+docker run --rm -p 3000:3000 -e PORT=3000 doc-svr:dev
 ```
 
-## 可维护性建议
+说明：镜像构建依赖 Docker 能拉取基础镜像；如果构建失败且报 registry 超时，优先检查本机外网访问或镜像代理。
 
-- 继续新增内容时，优先保持 Markdown 驱动，避免过早引入重前端工程
-- 如果后续需要图表，优先嵌入 SVG 或外部 iframe，再考虑 JS 图表组件
-- 若要扩展栏目，可在 content 下增加专题目录，并在 internal/site 中补分类逻辑
-- 正式上线前建议替换 main.go 中的站点 owner / email / location 为真实信息
+## Fiber 使用说明
+
+本项目对 Fiber 的使用方式已经固定成一条简单链路：
+
+- 在 main.go 中创建 fiber.App，并统一挂载 requestid、logger、etag、compress 等中间件
+- 通过 /assets 暴露 web/assets 内的共享静态资源
+- 把模板系统和 public 文件系统交给 internal/site.SiteApp 管理
+- 由 SiteApp 负责注册首页、健康检查和所有静态子页面路由
+
+详细说明见 docs/fiber-usage.md。
+
+## 页面接入规范
+
+新增一个页面时，只需要满足下面的目录约定：
+
+```text
+public/
+└── your-page/
+    ├── index.html
+    └── other-assets...
+```
+
+服务启动后会自动挂载：
+
+- public/your-page/index.html -> /your-page
+- public/your-page/xxx.js -> /your-page/xxx.js
+
+如果页面资源里使用相对路径，服务会自动补 base href，避免静态资源引用错位。
+
+## 当前建议
+
+- 新页面优先继续走 public/<route>/index.html 约定，避免手工加路由
+- 共享样式尽量落到 web/assets/site.css，避免每个页面各自重复维护
+- 大体积调试页会被 embed 进二进制，发布前要关注二进制体积和冷启动时间
+- 部署前建议替换 main.go 中 Profile 里的 owner、email、location 等信息
+- 当前项目的结构性观察和后续改进建议记录在 docs/project-notes.md
