@@ -67,7 +67,7 @@ func main() {
 	profile := site.Profile{
 		Name:        "Docs",
 		Tagline:     "本地文档入口服务",
-		Description: "统一承载多个已注册本地页面入口，并自动分发各页面的本地静态资源。",
+		Description: "自动转发本地服务 · 统一入口 · 便捷访问",
 		Owner:       "tenyunw",
 		Email:       "hujianghong@tenyunw.com",
 		Location:    "Shenzhen / xili",
@@ -75,7 +75,7 @@ func main() {
 		Version:     version,
 	}
 
-	port := getEnv("PORT", "3000")
+	port := getEnv("PORT", "4000")
 	app := fiber.New(fiber.Config{
 		AppName:       profile.Name,
 		CaseSensitive: false,
