@@ -1,0 +1,2864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>存储联调控制台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css" />
+  <style>
+    :root { --bg: #f3f6fb; --panel: #ffffff; --line: #e5eaf3; --text: #1f2a37; --muted: #667085; --primary: #2563eb; --success: #16a34a; --warning: #d97706; --danger: #dc2626; }
+    * { box-sizing: border-box; }
+    html, body, #app { height: 100%; margin: 0; }
+    body { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%); color: var(--text); }
+    .shell { height: 100vh; overflow: hidden; }
+    .sidebar {background-color: #020567d8;color: #eceef0;border-right: 1px solid #eaedbc;box-shadow: none;}
+    .brand { padding: 18px 18px 14px; border-bottom: 1px solid rgba(9, 33, 141, 0.2); background: rgba(99,102,241,0.12); }
+    .brand h1 { margin: 0 0 4px; font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -.2px; }
+    .brand .brand-badge { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+    .brand .brand-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399; }
+    .brand p { margin: 0; font-size: 11px; line-height: 1.6; color: #a5b4fc; }
+    .sidebar-scroll { height: calc(100vh - 96px); padding: 10px; }
+    .main-area { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+    .header { padding: 12px 18px; background: rgba(255,255,255,0.9); border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+    .header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .header-title { font-size: 18px; font-weight: 700; margin: 0; color: #101828; }
+    .header-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .content-scroll { flex: 1; padding: 14px 18px 20px; overflow-y: auto; }
+    .panel-card, .sidebar-card { border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(15,23,42,0.05); }
+    .sidebar-card { margin-bottom: 10px; }
+    .summary-card { padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(139,92,246,0.2); background: rgba(255,255,255,0.05); margin-bottom: 7px; }
+    .summary-card .k { font-size: 10px; color: #a5b4fc; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .4px; }
+    .summary-card .v { font-size: 12px; font-weight: 700; word-break: break-all; color: #e2e8f0; }
+    .tab-note { margin-bottom: 14px; padding: 12px 16px; border-radius: 12px; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); color: #454647; }
+    .tab-note .title { font-weight: 700; margin-bottom: 4px; color: #0f172a; }
+    .tab-note ul { margin: 6px 0 0 16px; padding: 0; color: #475467; line-height: 1.8; font-size: 13px; }
+    .panel-stack { display: grid; gap: 14px; }
+    .hero { border-radius: 14px; padding: 14px 16px; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 60%); border: 1px solid #dbeafe; margin-bottom: 14px; }
+    .hero-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 10px; }
+    .hero-kpi { background: rgba(255,255,255,0.88); border: 1px solid #dbeafe; border-radius: 10px; padding: 10px 12px; }
+    .hero-kpi .k { color: var(--muted); font-size: 11px; margin-bottom: 3px; }
+    .hero-kpi .v { font-size: 16px; font-weight: 700; color: #111827; }
+    .hero-usage { margin-top: 12px; border: 1px solid #dbeafe; border-radius: 14px; background: rgba(255,255,255,0.9); padding: 14px; }
+    .hero-usage-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .hero-usage-title { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .hero-usage-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .hero-usage-pct { font-size: 28px; font-weight: 800; color: #111827; line-height: 1; }
+    .hero-usage-meta { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 10px; }
+    .hero-usage-cell { border-radius: 10px; border: 1px solid #e5eaf3; background: #f8fafc; padding: 10px 12px; }
+    .hero-usage-cell .k { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .hero-usage-cell .v { font-size: 15px; font-weight: 700; color: #111827; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .logs { background: #060b18; color: #cbd5e1; border-radius: 10px; padding: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; min-height: 200px; }
+    .log-line { padding: 4px 10px; border-bottom: 1px solid rgba(148,163,184,0.07); white-space: pre-wrap; word-break: break-word; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; transition: background .1s; }
+    .log-line:hover { background: rgba(99,102,241,0.12); }
+    .log-ts { color: #475569; flex-shrink: 0; font-size: 10px; padding-top: 1px; }
+    .log-msg { flex: 1; }
+    .log-err { color: #f87171; }
+    .log-ok { color: #34d399; }
+    .log-warn { color: #fbbf24; }
+    .log-req { color: #93c5fd; }
+    .log-filter-bar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(148,163,184,0.1); background: #0b1225; border-radius: 10px 10px 0 0; }
+    .muted { color: var(--muted); }
+    .monospace { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+    .response-box { min-height: 200px; max-height: 400px; overflow: auto; margin: 0; padding: 10px; border-radius: 10px; background: #0b1120; color: #dbeafe; font-size: 11px; line-height: 1.6; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .inline-note { padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px dashed #cbd5e1; color: #475467; line-height: 1.8; }
+    .full-width { width: 100%; }
+    .step-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #2563eb; color: #fff; font-size: 11px; font-weight: 700; margin-right: 6px; flex-shrink: 0; }
+    .step-row { display: flex; align-items: center; margin-bottom: 10px; }
+    .step-row .step-label { font-weight: 600; font-size: 13px; color: #111827; }
+    .step-row .step-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .upload-progress-box { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: #f8fafc; }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .concurrent-badge { display: inline-block; background: #dbeafe; color: #1e40af; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+    .hint-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+    .hint-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 11px; font-weight: 600; }
+    .up-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+    .up-kpi { background: #fff; border: 1px solid #e5eaf3; border-radius: 8px; padding: 6px 10px; }
+    .up-kpi .up-kpi-k { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+    .up-kpi .up-kpi-v { font-size: 13px; font-weight: 700; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cur-file-box { border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; background: linear-gradient(135deg,#eff6ff,#f8fafc); margin: 10px 0; }
+    .cur-file-name { font-size: 12px; font-weight: 600; color: #1e40af; margin-bottom: 6px; word-break: break-all; }
+    .file-batch-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #e5eaf3; }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 10px 0 4px; }
+    .internal-section { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+    .internal-section-title { font-weight: 700; font-size: 13px; color: #111827; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .pat-token-reveal { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b1120; color: #86efac; padding: 12px; border-radius: 8px; word-break: break-all; font-size: 12px; }
+    .el-card__header { padding: 12px 16px; }
+    .el-card__body { padding: 14px; }
+    .filter-select { width: 148px; }
+    .filter-input { width: 160px; }
+    .storage-select-popper { max-width: min(420px, calc(100vw - 32px)); }
+    .storage-select-popper .el-select-dropdown__item { line-height: 1.45; height: auto; min-height: 34px; padding-top: 7px; padding-bottom: 7px; }
+    .resource-meta { font-size: 11px; line-height: 1.5; }
+    .resource-meta .main { color: #111827; font-weight: 600; }
+    .resource-meta .sub { color: var(--muted); margin-top: 2px; }
+    .resource-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .resource-stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); }
+    .resource-stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .35px; margin-bottom: 4px; }
+    .resource-stat .value { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2; }
+    .resource-stat .desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .count-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 0 10px; height: 28px; border-radius: 999px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; }
+    .count-pill.warn { border-color: #fde68a; background: #fffbeb; color: #b45309; }
+    .count-pill.ok { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+    .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .action-button-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .resource-table-shell { overflow-x: auto; }
+    .column-picker { width: min(360px, calc(100vw - 64px)); }
+    .column-picker-title { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .resource-name-cell { display: flex; flex-direction: column; gap: 4px; }
+    .resource-name-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .resource-name-title { font-size: 13px; font-weight: 700; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .resource-name-sub { font-size: 11px; color: var(--muted); line-height: 1.5; word-break: break-all; }
+    .detail-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 14px 0 10px; flex-wrap: wrap; }
+    .detail-toolbar .title { font-size: 14px; font-weight: 700; color: #111827; }
+    .detail-toolbar .desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .file-meta { line-height: 1.5; }
+    .file-meta .main { color: #111827; font-weight: 600; word-break: break-all; }
+    .file-meta .sub { color: var(--muted); margin-top: 2px; font-size: 11px; word-break: break-all; }
+    .drawer-summary { margin-bottom: 14px; }
+    .detail-tabs { margin-bottom: 12px; }
+    .table-empty-note { padding: 28px 12px; text-align: center; color: var(--muted); font-size: 12px; }
+    @media (max-width: 1280px) {
+      .hero-grid, .resource-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .hero-grid, .resource-overview { grid-template-columns: 1fr; }
+    }
+    .error-panel { border: 1px solid #fecaca; background: linear-gradient(180deg, #fff7f7 0%, #ffffff 100%); border-radius: 12px; padding: 14px; }
+    .error-panel .title { font-size: 15px; font-weight: 700; color: #991b1b; margin-bottom: 6px; }
+    .error-panel .message { font-size: 13px; color: #7f1d1d; line-height: 1.7; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <el-container class="shell">
+    <el-aside width="320px" class="sidebar">
+      <div class="brand">
+        <div class="brand-badge"><span class="brand-dot"></span><span style="font-size:10px;color:#a5b4fc;font-weight:600;letter-spacing:.5px;margin-top:20px;">STORAGE</span></div>
+        <h1>联调控制台</h1>
+        <p>上传 · 资源管理 · 配额 · PAT · 内部接口</p>
+      </div>
+      <el-scrollbar class="sidebar-scroll">
+        <el-card shadow="never" class="sidebar-card" style="background:rgba(99,102,241,0.1);border-color:rgba(139,92,246,0.25);">
+          <template #header><span style="color:#c7d2fe;font-size:14px;font-weight:700;letter-spacing:.3px;">连接与认证</span></template>
+          <el-form label-position="top" size="small">
+            <el-form-item><template #label><span style="color:#94a3b8;font-size:11px;">API Base URL</span></template>
+              <el-select
+                v-model="state.apiBase"
+                placeholder="请选择或输入 API Base URL"
+                size="small"
+                filterable
+                allow-create
+                default-first-option
+                style="width:100%;min-width:0;"
+                :popper-append-to-body="false"
+                :teleported="false"
+                popper-class="storage-select-popper api-base-select-popper"
+                :popper-options="{ modifiers: [{ name: 'computeStyles', options: { minWidth: '260px', maxWidth: '360px' } }] }"
+              >
+                <el-option :label="'本地开发'" :value="'http://192.168.0.65:8080'">
+                  <div style="display:flex;flex-direction:column;align-items:flex-start;">
+                    <span style="font-weight:600;">本地开发</span>
+                    <span style="font-size:11px;color:#64748b;">http://192.168.0.65:8080</span>
+                  </div>
+                </el-option>
+                <el-option :label="'dev'" :value="'https://storage-dev.tenyunn.com:29080'">
+                  <div style="display:flex;flex-direction:column;align-items:flex-start;">
+                    <span style="font-weight:600;">dev</span>
+                    <span style="font-size:11px;color:#64748b;">https://storage-dev.tenyunn.com:29080</span>
+                  </div>
+                </el-option>
+                <el-option :label="'公网'" :value="'https://storage.tenyunn.com:19080'">
+                  <div style="display:flex;flex-direction:column;align-items:flex-start;">
+                    <span style="font-weight:600;">公网</span>
+                    <span style="font-size:11px;color:#64748b;">https://storage.tenyunn.com:19080</span>
+                  </div>
+                </el-option>
+              </el-select>
+            <style>
+            .api-base-select-popper .el-select-dropdown__item {
+              min-width: 260px;
+              max-width: 360px;
+              white-space: normal;
+              line-height: 1.5;
+              padding-top: 6px;
+              padding-bottom: 6px;
+            }
+            </style>
+            </el-form-item>
+            <el-form-item><template #label><span style="color:#94a3b8;font-size:11px;">登录模式</span></template>
+              <el-radio-group v-model="state.loginMode" size="middle">
+                <el-radio-button label="main">主账户</el-radio-button>
+                <el-radio-button label="sub">子账户</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+            <template v-if="state.loginMode === 'main'">
+              <el-form-item><template #label><span style="color:#94a3b8;font-size:11px;">手机号</span></template>
+                <el-input v-model="state.mainPhone" size="small" />
+              </el-form-item>
+              <el-form-item><template #label><span style="color:#94a3b8;font-size:11px;">密码</span></template>
+                <el-input v-model="state.mainPassword" type="password" show-password size="small" />
+              </el-form-item>
+            </template>
+            <template v-else>
+              <el-form-item><template #label><span style="color:#94a3b8;font-size:11px;">子账户用户名</span></template>
+                <el-input v-model="state.subUsername" size="small" />
+              </el-form-item>
+              <el-form-item><template #label><span style="color:#94a3b8;font-size:11px;">子账户密码</span></template>
+                <el-input v-model="state.subPassword" type="password" show-password size="small" />
+              </el-form-item>
+            </template>
+            <el-form-item>
+              <template #label><span style="color:#94a3b8;font-size:11px;">当前租户</span></template>
+              <el-select v-model="state.activeTenant" :loading="state.loadingTenants" filterable allow-create default-first-option placeholder="登录后自动加载 / 可手动输入" size="small" class="full-width" :teleported="false" popper-class="storage-select-popper">
+                <el-option v-for="t in state.tenantOptions" :key="t.value" :label="t.label" :value="t.value" />
+              </el-select>
+            </el-form-item>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <el-button type="primary" size="small" :loading="state.loggingIn" @click="login">登录</el-button>
+              <el-button size="small" @click="refreshAll" :disabled="!state.token">刷新数据</el-button>
+              <el-button size="small" type="danger" plain :disabled="!state.token" @click="logout">退出登录</el-button>
+            </div>
+            <div v-if="state.token" style="margin-top:6px;font-size:11px;color:#a5b4fc;">
+              已记住登录态：刷新或重新打开页面会自动恢复，无需重复登录
+            </div>
+          </el-form>
+        </el-card>
+        <el-card shadow="never" class="sidebar-card" style="background:rgba(99,102,241,0.1);border-color:rgba(139,92,246,0.25);">
+          <template #header><span style="color:#c7d2fe;font-size:14px;font-weight:700;letter-spacing:.3px;">会话摘要</span></template>
+          <div class="summary-card"><div class="k">当前用户</div><div class="v">{{ state.currentUser || '-' }}</div></div>
+          <div class="summary-card"><div class="k">当前租户</div><div class="v">{{ state.activeTenant || '-' }}</div></div>
+          <div class="summary-card"><div class="k">已用 / 总配额</div><div class="v">{{ formatGB(state.quota.used_total||0) }} / {{ formatGB(state.quota.total_quota||0) }}</div></div>
+          <div v-if="state.quota.total_quota" style="margin-top:4px;">
+            <el-progress :percentage="Number(state.quota.usage_percent||0)" :status="(state.quota.usage_percent||0)>=80?'exception':(state.quota.usage_percent||0)>=60?'warning':undefined" :stroke-width="8" />
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px;">使用率 {{ state.quota.usage_percent||0 }}%，告警线 {{ state.quota.alert_threshold||0 }}%</div>
+          </div>
+        </el-card>
+      </el-scrollbar>
+    </el-aside>
+
+    <el-container class="main-area">
+      <div class="header">
+        <div class="header-row">
+          <div>
+            <p class="header-title">模型仓库与数据集联调工作台</p>
+            <div class="header-desc">覆盖分片上传链路、资源管理、配额与 PAT、内部接口及通用调试器。</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;">
+              <span style="font-size:12px;color:var(--muted);">签发 URL</span>
+              <el-switch v-model="state.urlMode" inline-prompt active-text="公网" inactive-text="内网" active-value="public" inactive-value="internal" />
+            </div>
+            <el-tag type="info" size="small">{{ state.currentUser || '未登录' }}</el-tag>
+            <el-tag type="success" size="small">{{ state.activeTenant || '-' }}</el-tag>
+            <el-tag :type="(state.quota.usage_percent||0)>=80?'danger':'warning'" size="small">{{ state.quota.usage_percent||0 }}% 使用</el-tag>
+          </div>
+        </div>
+      </div>
+
+      <el-scrollbar class="content-scroll">
+        <!-- <div class="hero">
+          <div style="font-size:15px;font-weight:700;color:#111827;">概览</div>
+          <div class="hero-usage">
+            <div class="hero-usage-top">
+              <div>
+                <div class="hero-usage-title">容量使用进度</div>
+                <div class="hero-usage-sub">用一个进度区域展示已用 / 可用空间、使用率以及告警阈值。</div>
+              </div>
+              <div class="hero-usage-pct">{{ Number(state.quota.usage_percent || 0).toFixed(1) }}%</div>
+            </div>
+            <el-progress
+              :percentage="Number(state.quota.usage_percent || 0)"
+              :stroke-width="14"
+              :status="(state.quota.usage_percent||0)>=80?'exception':(state.quota.usage_percent||0)>=60?'warning':undefined"
+            />
+            <div class="hero-usage-meta">
+              <div class="hero-usage-cell">
+                <div class="k">已用空间</div>
+                <div class="v">{{ formatGB(state.quota.used_total||0) }}</div>
+              </div>
+              <div class="hero-usage-cell">
+                <div class="k">可用空间</div>
+                <div class="v">{{ formatGB((state.quota.free_quota||state.quota.available)||0) }}</div>
+              </div>
+              <div class="hero-usage-cell">
+                <div class="k">告警阈值</div>
+                <div class="v">{{ state.quota.alert_threshold || 0 }}%</div>
+              </div>
+            </div>
+          </div>
+        </div> -->
+
+        <el-tabs v-model="state.activeTab">
+          <!-- 上传链路 -->
+          <el-tab-pane label="上传链路" name="upload">
+            <div class="tab-note">
+              <div class="title">场景：分片上传完整链路联调</div>
+              <ul>
+                <li><strong>步骤 1</strong> 初始化上传 → 拿到 upload_id 与分片总数</li>
+                <li><strong>步骤 2</strong> 批量获取分片预签名 PUT URL（按服务端返回的最大批次建议拉取）</li>
+                <li><strong>步骤 3</strong> 客户端直接 PUT 到 S3，支持并发，进度实时展示</li>
+                <li><strong>步骤 4</strong> 上报每片完成（part_number) </li>
+                <li><strong>步骤 5</strong> CompleteUpload 合并，轮询 status 直到 available</li>
+              </ul>
+            </div>
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="15">
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <strong>上传参数配置</strong>
+                      <div style="display:flex;gap:8px;align-items:center;">
+                        <span style="font-size:12px;color:var(--muted);">并发分片数</span>
+                        <el-input-number v-model="state.form.concurrency" :min="1" :max="16" size="small" style="width:110px;" />
+                      </div>
+                    </div>
+                  </template>
+                  <el-form label-position="top" size="small">
+                    <el-form-item label="上传资源类型">
+                      <el-radio-group v-model="state.form.resourceType" size="middle">
+                        <el-radio-button label="model">模型上传</el-radio-button>
+                        <el-radio-button label="dataset">数据集上传</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-row :gutter="12">
+                      <el-col :span="14"><el-form-item label="资源名称"><el-input v-model="state.form.name" placeholder="例如 demo-model" /></el-form-item></el-col>
+                      <el-col :span="10"><el-form-item label="分片大小 MB"><el-input-number v-model="state.form.chunkSizeMB" :min="5" :max="500" class="full-width" /></el-form-item></el-col>
+                    </el-row>
+                    <el-form-item label="描述"><el-input v-model="state.form.description" type="textarea" :rows="1" /></el-form-item>
+                    <el-row :gutter="12">
+                      <el-col :span="24" v-if="state.form.resourceType === 'model'">
+                        <el-form-item label="模型类型">
+                          <el-select v-model="state.form.modelType" class="full-width" :teleported="false" popper-class="storage-select-popper">
+                            <el-option v-for="opt in modelTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                      <template v-else>
+                        <el-col :span="12"><el-form-item label="数据集类型"><el-select v-model="state.form.datasetType" class="full-width" :teleported="false" popper-class="storage-select-popper"><el-option v-for="opt in datasetTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" /></el-select></el-form-item></el-col>
+                        <el-col :span="12"><el-form-item label="训练场景"><el-select v-model="state.form.trainScene" class="full-width" :teleported="false" popper-class="storage-select-popper"><el-option v-for="opt in trainSceneOptions" :key="opt.value" :label="opt.label" :value="opt.value" /></el-select></el-form-item></el-col>
+                      </template>
+                    </el-row>
+                    <el-form-item label="标签"><el-input v-model="state.form.labels" placeholder="manual,e2e-test（逗号分隔）" /></el-form-item>
+                    <el-form-item label="上传文件 / 文件夹">
+                      <div class="inline-note" style="width:100%">
+                        <div style="display:flex;gap:18px;align-items:flex-start;">
+                          <div style="flex:1;min-width:0;">
+                            <el-button type="primary" size="small" style="width:100%;" @click="() => $refs.uploadFileInput.click()">选择文件</el-button>
+                            <input ref="uploadFileInput" type="file" :accept="singleUploadAccept" @change="onFileChange" style="display:none;" />
+                            <div class="muted" style="margin-top:6px;font-size:12px;min-height:18px;">
+                              <template v-if="state.form.file">
+                                待上传：{{ state.form.file.name }}（{{ formatBytes(state.form.file.size) }}）
+                              </template>
+                              <template v-else>
+                                未选择任何文件
+                              </template>
+                            </div>
+                          </div>
+                          <div style="flex:1;min-width:0;">
+                            <el-button type="primary" size="small" style="width:100%;" @click="() => $refs.uploadFolderInput.click()">选择文件夹</el-button>
+                            <input ref="uploadFolderInput" type="file" webkitdirectory directory multiple @change="onFolderChange" style="display:none;" />
+                            <div class="muted" style="margin-top:6px;font-size:12px;min-height:18px;">
+                              <template v-if="state.form.files && state.form.files.length">
+                                文件夹直传：{{ state.form.files.length }} 个文件（共 {{ formatBytes(state.form.files.reduce((s,f)=>s+f.size,0)) }}）
+                              </template>
+                              <template v-else>
+                                未选择任何文件夹
+                              </template>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="muted" style="margin-top:8px;font-size:12px;">
+                          支持 .jsonl / .jsonlines / zip / tar / tar.gz，也支持文件夹（每个文件独立直传）。
+                        </div>
+                        <div v-if="state.resumeSession.uploadId" style="margin-top:8px;padding:12px;border:1px solid #fcd34d;border-radius:10px;background:linear-gradient(180deg,#fffbeb 0%,#fff7ed 100%);color:#92400e;font-size:12px;line-height:1.7;">
+                          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                            <div>
+                              <div style="font-weight:700;">断点续传恢复</div>
+                              <div>upload_id：<span class="monospace">{{ state.resumeSession.uploadId }}</span></div>
+                              <div>resource_id：<span class="monospace">{{ state.resumeSession.resourceId || '—' }}</span></div>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                              <el-tag v-if="state.resumeSession.mode === 'single'" size="small" :type="resumeFileReady ? 'success' : 'warning'">{{ resumeFileReady ? '已匹配原文件' : '待重新选择原文件' }}</el-tag>
+                              <el-tag v-else size="small" :type="resumeFolderReady ? 'success' : 'warning'">{{ resumeFolderReady ? '已匹配原文件夹' : '待重新选择原文件夹' }}</el-tag>
+                              <el-tag size="small" type="info">{{ state.resumeSession.mode === 'single' ? '单文件续传' : '文件夹会话' }}</el-tag>
+                            </div>
+                          </div>
+                          <div v-if="state.resumeSession.canResume" style="margin-top:8px;">
+                            1. 先恢复服务或网络。2. 重新选择同一个文件：{{ state.resumeSession.filename }}（{{ formatBytes(state.resumeSession.fileSize) }}）。3. 点击“查询现场”确认已上传分片，再点“继续续传”。
+                          </div>
+                          <div v-else style="margin-top:8px;">该会话来自文件夹直传。重新选择同一个文件夹，并保持仓库名称为“{{ state.resumeSession.resourceName || state.form.name || '原仓库名称' }}”，点击“继续文件夹续传”；已完成文件会自动跳过，未完成文件继续上传。</div>
+                          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                            <el-button size="small" @click="inspectResumeUpload">查询现场</el-button>
+                            <el-button size="small" type="warning" plain :disabled="state.upload.working || !state.resumeSession.canResume || !resumeFileReady" @click="resumeUpload">继续续传</el-button>
+                            <el-button size="small" type="warning" plain :disabled="state.upload.working || state.resumeSession.mode !== 'folder' || !resumeFolderReady" @click="startUpload">继续文件夹续传</el-button>
+                            <el-button size="small" text @click="clearSavedResumeSession">清除会话</el-button>
+                          </div>
+                        </div>
+                      </div>
+                    </el-form-item>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <el-button type="primary" :loading="state.upload.working" @click="startUpload">开始上传</el-button>
+                      <el-button plain :disabled="state.upload.working || !state.resumeSession.uploadId" @click="inspectResumeUpload">查询现场</el-button>
+                      <el-button @click="cancelCurrentUpload" :disabled="!state.upload.uploadId">取消上传</el-button>
+                      <el-button @click="resetUploadForm">重置表单</el-button>
+                    </div>
+                  </el-form>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="9">
+                <div class="panel-stack">
+                  <!-- ====== 上传进度主卡片 ====== -->
+                  <el-card class="panel-card" shadow="never">
+                    <template #header>
+                      <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                          <strong>上传进度</strong>
+                          <el-tag :type="statusTagType(state.upload.status)" size="small" effect="light">任务 {{ state.upload.status || 'idle' }}</el-tag>
+                          <el-tag v-if="state.upload.resourceStatus" :type="statusTagType(state.upload.resourceStatus)" size="small" effect="plain">仓库 {{ state.upload.resourceStatus }}</el-tag>
+                        </div>
+                        <span class="concurrent-badge">并发 × {{ state.upload.effectiveConcurrency || state.form.concurrency }}</span>
+                      </div>
+                    </template>
+                    <div class="upload-progress-box">
+                      <div class="hint-strip" v-if="state.upload.recommendedConcurrency || state.upload.maxPartURLBatch">
+                        <span class="hint-chip" v-if="state.upload.recommendedConcurrency">服务端建议并发 × {{ state.upload.recommendedConcurrency }}</span>
+                        <span class="hint-chip" v-if="state.upload.maxPartURLBatch">Part URL 批次 ≤ {{ state.upload.maxPartURLBatch }}</span>
+                      </div>
+
+                      <!-- 总体进度条 -->
+                      <div class="section-label">总体进度</div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-size:12px;color:var(--muted);">{{ formatBytes(state.upload.sentBytes||0) }} / {{ formatBytes(state.upload.totalBytes||0) }}</span>
+                        <span style="font-size:14px;font-weight:700;color:#111827;">{{ state.upload.progress }}%</span>
+                      </div>
+                      <el-progress :percentage="Number(state.upload.progress || 0)" :stroke-width="10"
+                        :status="state.upload.status === 'failed' ? 'exception' : state.upload.status === 'available' ? 'success' : undefined" />
+
+                      <!-- 4 格 KPI -->
+                      <div class="up-kpi-grid">
+                        <div class="up-kpi"><div class="up-kpi-k">速度</div><div class="up-kpi-v">{{ state.upload.speed || '—' }}</div></div>
+                        <div class="up-kpi"><div class="up-kpi-k">预计剩余</div><div class="up-kpi-v">{{ state.upload.eta || '—' }}</div></div>
+                        <div class="up-kpi"><div class="up-kpi-k">文件进度</div><div class="up-kpi-v">{{ state.upload.doneFiles || 0 }} / {{ state.upload.totalFiles || 0 }}</div></div>
+                        <div class="up-kpi"><div class="up-kpi-k">当前分片</div><div class="up-kpi-v">{{ state.upload.uploadedCount || 0 }} / {{ state.upload.totalParts || 0 }}</div></div>
+                      </div>
+
+                      <!-- 多文件时：文件批次进度条 -->
+                      <template v-if="state.upload.totalFiles > 1">
+                        <div class="section-label">文件批次（{{ state.upload.doneFiles }}/{{ state.upload.totalFiles }} 已完成）</div>
+                        <el-progress
+                          :percentage="state.upload.totalFiles ? Math.round(state.upload.doneFiles / state.upload.totalFiles * 100) : 0"
+                          :stroke-width="6" color="#7c3aed"
+                          :status="state.upload.status === 'available' ? 'success' : undefined" />
+                      </template>
+
+                      <!-- 当前文件详情 -->
+                      <template v-if="state.upload.currentFileName">
+                        <div class="section-label">当前文件</div>
+                        <div class="cur-file-box">
+                          <div class="cur-file-name" :title="state.upload.currentFileName">📄 {{ state.upload.currentFileName }}</div>
+                          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+                            <span>{{ formatBytes(state.upload.currentFileSize||0) }}</span>
+                            <span style="font-weight:600;color:#1e40af;">{{ state.upload.currentFilePct || 0 }}%</span>
+                          </div>
+                          <el-progress :percentage="Number(state.upload.currentFilePct || 0)" :stroke-width="6"
+                            color="#2563eb"
+                            :status="state.upload.currentFilePct >= 100 ? 'success' : undefined" />
+                          <div style="font-size:11px;color:var(--muted);margin-top:4px;">分片 {{ state.upload.uploadedCount || 0 }} / {{ state.upload.totalParts || 0 }}</div>
+                        </div>
+                      </template>
+
+                      <!-- 错误信息 -->
+                      <el-alert v-if="state.upload.errorMsg" :title="state.upload.errorMsg"
+                        :type="state.upload.status === 'paused' ? 'warning' : 'error'" show-icon :closable="false" style="margin-top:8px;" />
+
+                      <el-divider style="margin:10px 0;" />
+
+                      <!-- IDs -->
+                      <div style="font-size:11px;color:var(--muted);line-height:1.9;">
+                        <div><span style="display:inline-block;width:88px;">Upload ID</span><span class="monospace" style="color:#111827;">{{ state.upload.uploadId || '—' }}</span></div>
+                        <div><span style="display:inline-block;width:88px;">Resource ID</span><span class="monospace" style="color:#111827;">{{ state.upload.resourceId || '—' }}</span></div>
+                        <div><span style="display:inline-block;width:88px;">仓库状态</span><span style="color:#111827;">{{ state.upload.resourceStatus || '—' }}</span></div>
+                        <div><span style="display:inline-block;width:88px;">URL 模式</span><span style="color:#111827;">{{ state.urlMode === 'public' ? '公网' : '内网' }}</span></div>
+                      </div>
+                      <div v-if="state.upload.uploadedPartNumbers && state.upload.uploadedPartNumbers.length" style="margin-top:8px;">
+                        <div class="section-label" style="margin-top:0;">已上传分片编号</div>
+                        <div class="monospace" style="font-size:11px;color:#475467;line-height:1.7;max-height:72px;overflow:auto;">{{ state.upload.uploadedPartNumbers.join(', ') }}</div>
+                      </div>
+                    </div>
+
+                    <!-- 手动查询 -->
+                    <div style="margin-top:12px;display:flex;gap:8px;align-items:flex-end;">
+                      <el-form-item label="手动查询 upload_id" style="margin:0;flex:1;">
+                        <el-input v-model="state.manualUploadId" placeholder="粘贴历史 upload_id" size="small" />
+                      </el-form-item>
+                      <el-button size="small" @click="pollUpload(state.manualUploadId || state.upload.uploadId, { includeParts: true, refreshPartNumbers: true })" style="margin-bottom:0;">查询</el-button>
+                    </div>
+                  </el-card>
+
+                  <!-- 流程指引 -->
+                  <el-card class="panel-card" shadow="never">
+                    <template #header><strong>分片上传流程指引</strong></template>
+                    <div>
+                      <div class="step-row"><span class="step-badge">1</span><div><div class="step-label">初始化上传（Init）</div><div class="step-desc">POST /upload/init，返回 upload_id</div></div></div>
+                      <div class="step-row"><span class="step-badge">2</span><div><div class="step-label">批量获取分片 URL</div><div class="step-desc">POST /upload/{id}/part-url，按服务端 max_part_url_batch 拉取</div></div></div>
+                      <div class="step-row"><span class="step-badge">3</span><div><div class="step-label">并发 PUT 到 S3</div><div class="step-desc">直接 PUT 预签名 URL，不经过 API Server</div></div></div>
+                      <div class="step-row"><span class="step-badge">4</span><div><div class="step-label">上报分片完成</div><div class="step-desc">POST /upload/{id}/part 上报 etag</div></div></div>
+                      <div class="step-row" style="margin-bottom:0;"><span class="step-badge">5</span><div><div class="step-label">Complete + 轮询</div><div class="step-desc">POST /complete，轮询 /status 到 available</div></div></div>
+                    </div>
+                  </el-card>
+                </div>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <!-- 追加文件 -->
+          <el-tab-pane label="追加文件" name="append">
+            <div class="tab-note">
+              <div class="title">场景：向已有模型/数据集仓库追加文件</div>
+              <ul>
+                <li>选择资源类型，从下拉列表选择已有仓库（支持搜索），选中后直接上传</li>
+                <li>支持单文件或整个文件夹（每个文件独立分片直传）</li>
+                <li>复用断点续传逻辑：同名文件已上传的分片自动跳过</li>
+              </ul>
+            </div>
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="14">
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <strong>追加文件配置</strong>
+                      <div style="display:flex;gap:8px;align-items:center;">
+                        <span style="font-size:12px;color:var(--muted);">并发分片数</span>
+                        <el-input-number v-model="state.appendForm.concurrency" :min="1" :max="16" size="small" style="width:110px;" />
+                      </div>
+                    </div>
+                  </template>
+                  <el-form label-position="top" size="small">
+                    <!-- 资源类型 + 仓库选择 -->
+                    <el-row :gutter="12">
+                      <el-col :span="7">
+                        <el-form-item label="资源类型">
+                          <el-radio-group v-model="state.appendForm.resourceType" size="small">
+                            <el-radio-button label="model">模型</el-radio-button>
+                            <el-radio-button label="dataset">数据集</el-radio-button>
+                          </el-radio-group>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="17">
+                        <el-form-item label="目标仓库（从列表选择）">
+                          <el-select
+                            v-model="state.appendForm.resourceId"
+                            filterable
+                            clearable
+                            reserve-keyword
+                            placeholder="点击加载，输入名称/ID 搜索"
+                            style="width:100%;"
+                            :loading="state.appendForm.loadingOptions"
+                            :teleported="false"
+                            popper-class="storage-select-popper"
+                            @visible-change="(visible) => visible && loadAppendResources()">
+                            <el-option
+                              v-for="r in state.appendForm.resourceOptions"
+                              :key="r.resource_id"
+                              :label="`${r.name}（${r.resource_id}）`"
+                              :value="r.resource_id">
+                              <div class="resource-meta">
+                                <div class="main">{{ r.name }}</div>
+                                <div class="sub">{{ r.resource_id }} · {{ r.source || '-' }} · {{ r.status || '-' }}</div>
+                              </div>
+                            </el-option>
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <!-- 手动输入 resource_id -->
+                    <el-form-item label="或手动输入 Resource ID">
+                      <el-input v-model="state.appendForm.resourceId" placeholder="mr_XXXX 或 ds_XXXX" size="small" />
+                    </el-form-item>
+                    <!-- 分片大小 -->
+                    <el-form-item label="分片大小 MB">
+                      <el-input-number v-model="state.appendForm.chunkSizeMB" :min="5" :max="500" class="full-width" />
+                    </el-form-item>
+                    <!-- 文件选择 -->
+                    <el-form-item label="选择文件 / 文件夹">
+                      <div class="inline-note" style="width:100%">
+                        <div style="display:flex;gap:18px;align-items:flex-start;">
+                          <div style="flex:1;min-width:0;">
+                            <el-button type="primary" size="small" style="width:100%;" @click="() => $refs.appendFileInput.click()">选择文件</el-button>
+                            <input ref="appendFileInput" type="file" :accept="appendUploadAccept" @change="onAppendFileChange" style="display:none;" />
+                            <div class="muted" style="margin-top:6px;font-size:12px;min-height:18px;">
+                              <template v-if="state.appendForm.file">
+                                待追加：{{ state.appendForm.file.name }}（{{ formatBytes(state.appendForm.file.size) }}）
+                              </template>
+                              <template v-else>
+                                未选择任何文件
+                              </template>
+                            </div>
+                          </div>
+                          <div style="flex:1;min-width:0;">
+                            <el-button type="primary" size="small" style="width:100%;" @click="() => $refs.appendFolderInput.click()">选择文件夹</el-button>
+                            <input ref="appendFolderInput" type="file" webkitdirectory directory multiple @change="onAppendFolderChange" style="display:none;" />
+                            <div class="muted" style="margin-top:6px;font-size:12px;min-height:18px;">
+                              <template v-if="state.appendForm.files && state.appendForm.files.length">
+                                文件夹：{{ state.appendForm.files.length }} 个文件（共 {{ formatBytes(state.appendForm.files.reduce((s,f)=>s+f.size,0)) }}）
+                              </template>
+                              <template v-else>
+                                未选择任何文件夹
+                              </template>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="muted" style="margin-top:8px;font-size:12px;">
+                          支持 .jsonl / .jsonlines / zip / tar / tar.gz，也支持文件夹（每个文件独立直传）。
+                        </div>
+                      </div>
+                    </el-form-item>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <el-button type="primary" :loading="state.appendUpload.working" @click="startAppendUpload">开始追加</el-button>
+                      <el-button @click="resetAppendForm" :disabled="state.appendUpload.working">重置</el-button>
+                    </div>
+                  </el-form>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="10">
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <strong>追加进度</strong>
+                        <el-tag :type="statusTagType(state.appendUpload.status)" size="small" effect="light">{{ state.appendUpload.status || 'idle' }}</el-tag>
+                      </div>
+                      <span class="concurrent-badge">并发 × {{ state.appendUpload.effectiveConcurrency || state.appendForm.concurrency }}</span>
+                    </div>
+                  </template>
+                  <div class="upload-progress-box">
+                    <div class="hint-strip" v-if="state.appendUpload.recommendedConcurrency || state.appendUpload.maxPartURLBatch">
+                      <span class="hint-chip" v-if="state.appendUpload.recommendedConcurrency">服务端建议并发 × {{ state.appendUpload.recommendedConcurrency }}</span>
+                      <span class="hint-chip" v-if="state.appendUpload.maxPartURLBatch">Part URL 批次 ≤ {{ state.appendUpload.maxPartURLBatch }}</span>
+                    </div>
+                    <!-- 总进度 -->
+                    <div class="section-label">总体进度</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                      <span style="font-size:12px;color:var(--muted);">{{ formatBytes(state.appendUpload.sentBytes||0) }} / {{ formatBytes(state.appendUpload.totalBytes||0) }}</span>
+                      <span style="font-size:14px;font-weight:700;color:#111827;">{{ state.appendUpload.progress }}%</span>
+                    </div>
+                    <el-progress :percentage="Number(state.appendUpload.progress || 0)" :stroke-width="10"
+                      :status="state.appendUpload.status === 'failed' ? 'exception' : state.appendUpload.status === 'available' ? 'success' : undefined" />
+                    <div class="up-kpi-grid" style="margin-top:10px;">
+                      <div class="up-kpi"><div class="up-kpi-k">速度</div><div class="up-kpi-v">{{ state.appendUpload.speed || '—' }}</div></div>
+                      <div class="up-kpi"><div class="up-kpi-k">预计剩余</div><div class="up-kpi-v">{{ state.appendUpload.eta || '—' }}</div></div>
+                      <div class="up-kpi"><div class="up-kpi-k">文件进度</div><div class="up-kpi-v">{{ state.appendUpload.doneFiles || 0 }} / {{ state.appendUpload.totalFiles || 0 }}</div></div>
+                      <div class="up-kpi"><div class="up-kpi-k">当前分片</div><div class="up-kpi-v">{{ state.appendUpload.uploadedCount || 0 }} / {{ state.appendUpload.totalParts || 0 }}</div></div>
+                    </div>
+                    <!-- 当前文件 -->
+                    <template v-if="state.appendUpload.currentFileName">
+                      <div class="section-label" style="margin-top:12px;">当前文件</div>
+                      <div class="cur-file-box">
+                        <div class="cur-file-name" :title="state.appendUpload.currentFileName">📄 {{ state.appendUpload.currentFileName }}</div>
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+                          <span>{{ formatBytes(state.appendUpload.currentFileSize||0) }}</span>
+                          <span style="font-weight:600;color:#1e40af;">{{ state.appendUpload.currentFilePct || 0 }}%</span>
+                        </div>
+                        <el-progress :percentage="Number(state.appendUpload.currentFilePct || 0)" :stroke-width="6"
+                          color="#2563eb" :status="state.appendUpload.currentFilePct >= 100 ? 'success' : undefined" />
+                      </div>
+                    </template>
+                    <el-alert v-if="state.appendUpload.errorMsg" :title="state.appendUpload.errorMsg"
+                      type="error" show-icon :closable="false" style="margin-top:8px;" />
+                    <template v-if="state.appendForm.resourceId">
+                      <el-divider style="margin:10px 0;" />
+                      <div style="font-size:11px;color:var(--muted);">
+                        <span style="display:inline-block;width:88px;">目标 Resource ID</span>
+                        <span class="monospace" style="color:#111827;">{{ state.appendForm.resourceId }}</span>
+                      </div>
+                    </template>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <!-- 资源管理 -->
+          <el-tab-pane label="资源管理" name="resources">
+            <div class="tab-note">
+              <div class="title">场景：模型 & 数据集资源查询与管理</div>
+              <div>支持列表查询、详情（含完整文件清单）、元信息编辑、批量下载链接生成与删除操作。</div>
+            </div>
+            <div class="resource-overview">
+              <div class="resource-stat">
+                <div class="label">总资源</div>
+                <div class="value">{{ state.resourcePager.total }}</div>
+                <div class="desc">服务端分页后的总命中数</div>
+              </div>
+              <div class="resource-stat">
+                <div class="label">当前页条目</div>
+                <div class="value">{{ state.resources.length }}</div>
+                <div class="desc">第 {{ state.resourcePager.page }} / {{ resourcePageCount }} 页</div>
+              </div>
+              <div class="resource-stat">
+                <div class="label">当前页文件数</div>
+                <div class="value">{{ resourceTableSummary.fileCount }}</div>
+                <div class="desc">当前页资源文件总量</div>
+              </div>
+              <div class="resource-stat">
+                <div class="label">当前页引用数</div>
+                <div class="value">{{ resourceTableSummary.refCount }}</div>
+                <div class="desc">其中 {{ resourceTableSummary.referencedResourceCount }} 个资源正在被引用</div>
+              </div>
+            </div>
+            <el-card class="panel-card" shadow="never">
+              <template #header>
+                <div class="toolbar">
+                  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <strong>资源列表</strong>
+                    <el-radio-group v-model="state.listType" @change="queryResources" size="middle">
+                      <el-radio-button label="model">模型</el-radio-button>
+                      <el-radio-button label="dataset">数据集</el-radio-button>
+                    </el-radio-group>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <el-select v-model="state.listFilters.source" size="small" class="filter-select" clearable placeholder="来源" :teleported="false" popper-class="storage-select-popper" @change="queryResources">
+                      <el-option v-for="opt in sourceOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                    </el-select>
+                    <el-select v-model="state.filterStatus" size="small" class="filter-select" clearable placeholder="状态" :teleported="false" popper-class="storage-select-popper" @change="queryResources">
+                      <el-option v-for="opt in resourceStatusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                    </el-select>
+                    <template v-if="state.listType === 'model'">
+                      <el-select v-model="state.listFilters.modelType" size="small" class="filter-select" clearable placeholder="模型类型" :teleported="false" popper-class="storage-select-popper" @change="queryResources">
+                        <el-option v-for="opt in modelTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                      </el-select>
+                      <el-select v-model="state.listFilters.isSystem" size="small" class="filter-select" clearable placeholder="系统模型" :teleported="false" popper-class="storage-select-popper" @change="queryResources">
+                        <el-option v-for="opt in systemFlagOptions" :key="String(opt.value)" :label="opt.label" :value="opt.value" />
+                      </el-select>
+                    </template>
+                    <template v-else>
+                      <el-select v-model="state.listFilters.datasetType" size="small" class="filter-select" clearable placeholder="数据集类型" :teleported="false" popper-class="storage-select-popper" @change="queryResources">
+                        <el-option v-for="opt in datasetTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                      </el-select>
+                      <el-select v-model="state.listFilters.trainScene" size="small" class="filter-select" clearable placeholder="训练场景" :teleported="false" popper-class="storage-select-popper" @change="queryResources">
+                        <el-option v-for="opt in trainSceneOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                      </el-select>
+                      <el-input v-model="state.listFilters.trainMethod" placeholder="训练方法" clearable size="small" class="filter-input" @keyup.enter="queryResources" />
+                    </template>
+                    <el-input v-model="state.listFilters.label" placeholder="标签过滤" clearable size="small" class="filter-input" @keyup.enter="queryResources" />
+                    <el-input v-model="state.keyword" placeholder="名称关键词" clearable size="small" style="width:180px;" @keyup.enter="queryResources" />
+                    <el-button size="small" type="primary" plain @click="queryResources">
+                      <el-icon><Search /></el-icon><span>查询</span>
+                    </el-button>
+                    <el-button size="small" plain @click="resetListFilters">重置</el-button>
+                    <el-popover placement="bottom-end" trigger="click" :width="360">
+                      <template #reference>
+                        <el-button size="small" plain>
+                          <el-icon><Setting /></el-icon><span>字段</span>
+                        </el-button>
+                      </template>
+                      <div class="column-picker">
+                        <div class="column-picker-title">选择列表字段</div>
+                        <el-checkbox-group v-model="state.resourceColumns">
+                          <el-checkbox-button v-for="opt in resourceColumnOptions" :key="opt.value" :label="opt.value">{{ opt.label }}</el-checkbox-button>
+                        </el-checkbox-group>
+                      </div>
+                    </el-popover>
+                  </div>
+                </div>
+              </template>
+              <el-table :data="state.resources" v-loading="state.loadingResources" border stripe height="460" size="small" row-key="resource_id" scrollbar-always-on table-layout="auto">
+                <el-table-column label="名称" min-width="200" fixed="left" show-overflow-tooltip>
+                  <template #default="s">
+                    <div class="resource-name-cell">
+                      <div class="resource-name-top">
+                        <div class="resource-name-title">{{ s.row.name || '-' }}</div>
+                        <!-- <el-tag size="small" effect="light">{{ resourceTypeLabel(s.row.resource_type || state.listType) }}</el-tag> -->
+                      </div>
+                      <!-- <div class="resource-name-sub">{{ s.row.resource_id }} · {{ s.row.source || '-' }} · {{ s.row.status || '-' }}</div> -->
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('resourceId')" prop="resource_id" label="资源 ID" min-width="200" show-overflow-tooltip>
+                  <template #default="s"><span class="monospace" style="font-size:11px;">{{ s.row.resource_id }}</span></template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('status')" prop="status" label="状态" width="100">
+                  <template #default="s"><el-tag :type="statusTagType(s.row.status)" size="small">{{ s.row.status }}</el-tag></template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('source')" label="来源" width="96" show-overflow-tooltip>
+                  <template #default="s"><el-tag size="small" effect="plain">{{ s.row.source || '-' }}</el-tag></template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('typeScene')" label="类型 / 场景" min-width="150" show-overflow-tooltip>
+                  <template #default="s">
+                    <div class="resource-meta">
+                      <div class="main">{{ state.listType === 'model' ? (s.row.model_type || '-') : (s.row.dataset_type || '-') }}</div>
+                      <div class="sub">{{ state.listType === 'dataset' ? ((s.row.train_scene || '-') + (s.row.train_method ? ' / ' + s.row.train_method : '')) : (s.row.data_type || '-') }}</div>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('fileCount')" label="文件数" width="92" align="center">
+                  <template #default="s"><span class="count-pill">{{ Number(s.row.file_count || 0) }}</span></template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('totalSize')" label="总大小" width="100" align="right">
+                  <template #default="s">{{ formatBytes(s.row.total_size||0) }}</template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('visibility')" label="可见性" width="90" show-overflow-tooltip>
+                  <template #default="s"><el-tag size="small" :type="s.row.visibility === 1 ? 'success' : 'info'" effect="light">{{ visibilityText(s.row.visibility) }}</el-tag></template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('refCount')" label="引用数" width="92" align="center">
+                  <template #default="s"><span class="count-pill" :class="Number(s.row.ref_count || 0) > 0 ? 'warn' : 'ok'">{{ Number(s.row.ref_count || 0) }}</span></template>
+                </el-table-column>
+                <el-table-column  prop="description" label="描述" min-width="120" show-overflow-tooltip>
+                  <template #default="s"><span style="font-size:11px;color:var(--muted);">{{ s.row.description || '-' }}</span></template>
+                </el-table-column>
+                <!-- <el-table-column v-if="hasResourceColumn('labels')" label="标签" width="130" show-overflow-tooltip>
+                  <template #default="s">
+                    <el-space v-if="s.row.labels && s.row.labels.length" wrap>
+                      <el-tag v-for="lb in s.row.labels" :key="lb" size="small" effect="plain">{{ lb }}</el-tag>
+                    </el-space>
+                    <span v-else style="color:var(--muted);font-size:11px;">-</span>
+                  </template>
+                </el-table-column> -->
+                <el-table-column v-if="hasResourceColumn('createdAt')" label="创建时间" width="150" show-overflow-tooltip>
+                  <template #default="s"><span style="font-size:11px;">{{ s.row.created_at }}</span></template>
+                </el-table-column>
+                <el-table-column v-if="hasResourceColumn('creator')" label="创建者" width="120" show-overflow-tooltip>
+                  <template #default="s">
+                    <span style="font-size:11px;">
+                      {{ s.row.creator_name || (s.row.sub_account_id ? '#' + s.row.sub_account_id : '#' + s.row.created_by) }}
+                    </span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="260" fixed="right">
+                  <template #default="s">
+                    <div class="action-button-row">
+                      <el-button size="small" type="primary" plain @click="showDetail(s.row)">
+                        详情</span>
+                      </el-button>
+                      <el-button size="small" type="warning" plain @click="openEdit(s.row)">
+                        编辑</span>
+                      </el-button>
+                      <el-button size="small" type="danger" plain @click="removeResource(s.row)">
+                        <el-icon><Delete /></el-icon><span>删除</span>
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="table-footer">
+                <div class="muted">当前显示 {{ state.resources.length }} 条，共 {{ state.resourcePager.total }} 条；文件数和引用数已按数值字段归一化显示。</div>
+                <el-pagination
+                  background
+                  layout="total, sizes, prev, pager, next, jumper"
+                  :total="state.resourcePager.total"
+                  :current-page="state.resourcePager.page"
+                  :page-size="state.resourcePager.pageSize"
+                  :page-sizes="state.resourcePager.pageSizes"
+                  @current-change="handleResourcePageChange"
+                  @size-change="handleResourcePageSizeChange"
+                />
+              </div>
+            </el-card>
+          </el-tab-pane>
+
+          <!-- 配额与 PAT -->
+          <el-tab-pane label="配额与 PAT" name="quota">
+            <div class="tab-note">
+              <div class="title">场景：存储配额监控 & 个人访问令牌管理</div>
+              <div>查看当前租户配额用量；创建、查看、撤销 PAT（Personal Access Token）用于 API / CLI 无交互认证。</div>
+            </div>
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="10">
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;"><strong>存储配额</strong><el-button size="small" @click="loadQuota" :loading="state.loadingQuota">刷新</el-button></div>
+                  </template>
+                  <div style="margin-bottom:14px;">
+                    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;"><span>{{ formatGB(state.quota.used_total||0) }}</span><span class="muted">/ {{ formatGB(state.quota.total_quota||0) }}</span></div>
+                    <el-progress :percentage="Number(state.quota.usage_percent||0)" :status="(state.quota.usage_percent||0)>=80?'exception':(state.quota.usage_percent||0)>=60?'warning':undefined" :stroke-width="14" />
+                    <div v-if="(state.quota.usage_percent||0) >= (state.quota.alert_threshold||80)" style="margin-top:8px;">
+                      <el-alert :title="'⚠ 已超过告警阈值 ' + (state.quota.alert_threshold||80) + '%'" type="warning" show-icon :closable="false" />
+                    </div>
+                  </div>
+                  <el-descriptions :column="1" border size="small">
+                    <el-descriptions-item label="总配额">{{ formatGB(state.quota.total_quota||0) }}</el-descriptions-item>
+                    <el-descriptions-item label="已用空间">{{ formatGB(state.quota.used_total||0) }}</el-descriptions-item>
+                    <el-descriptions-item label="可用空间">{{ formatGB((state.quota.free_quota||state.quota.available)||0) }}</el-descriptions-item>
+                    <el-descriptions-item label="使用率">{{ state.quota.usage_percent||0 }}%</el-descriptions-item>
+                    <el-descriptions-item label="告警阈值">{{ state.quota.alert_threshold||0 }}%</el-descriptions-item>
+                  </el-descriptions>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="14">
+                <!-- 创建 PAT 放在列表上方，让用户先看到创建入口 -->
+                <el-card class="panel-card" shadow="never" style="margin-bottom:14px;">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <strong>创建 PAT 令牌</strong>
+                      <el-button size="small" @click="loadTokens" :disabled="!state.token">刷新列表</el-button>
+                    </div>
+                  </template>
+                  <el-form label-position="top" size="small">
+                    <el-row :gutter="12">
+                      <el-col :span="9">
+                        <el-form-item label="令牌名称">
+                          <el-input v-model="state.tokenForm.name" placeholder="e.g.cli-token-prod" />
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="9">
+                        <el-form-item label="权限范围">
+                          <el-select v-model="state.tokenForm.scopes" class="full-width" :teleported="false" popper-class="storage-select-popper">
+                            <el-option v-for="opt in tokenScopeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="6">
+                        <el-form-item label="过期天数">
+                          <el-input-number v-model="state.tokenForm.expiresInDays" :min="0" :max="3650" class="full-width" />
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <div class="muted" style="font-size:11px;margin-bottom:10px;">过期天数 0 = 永不过期，建议设置有效期提高安全性。</div>
+                    <el-button type="primary" size="small" @click="createPAT">创建 PAT</el-button>
+                  </el-form>
+                  <!-- PAT 令牌对话框：创建后弹出，仅显示一次 -->
+                  <el-dialog v-model="state.patDialogVisible" title="🔑 请立即保存您的访问令牌（仅显示一次）" width="600px" :close-on-click-modal="false" :before-close="closePATDialog">
+                    <el-alert title="令牌仅在此处显示一次！关闭后将无法再次查看，请务必立即复制保存到安全的地方。" type="error" :closable="false" style="margin-bottom:16px;" />
+                    <div style="background:#0f172a;border-radius:10px;padding:16px;margin-bottom:16px;position:relative;">
+                      <div style="font-size:11px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">访问令牌（Access Token）</div>
+                      <div class="pat-token-reveal" style="font-size:13px;word-break:break-all;user-select:all;color:#34d399;font-family:ui-monospace,monospace;line-height:1.6;">{{ state.rawToken }}</div>
+                    </div>
+                    <el-button type="primary" size="large" style="width:100%;font-size:15px;margin-bottom:12px;" @click="copyToken">📋 复制令牌到剪贴板</el-button>
+                    <el-checkbox v-model="state.patTokenCopied" style="font-size:13px;color:#374151;">
+                      <span style="font-weight:600;">我已将令牌复制并保存到安全位置，了解此令牌不会再次显示</span>
+                    </el-checkbox>
+                    <template #footer>
+                      <el-button type="success" style="width:100%;" :disabled="!state.patTokenCopied" @click="() => { state.patDialogVisible = false; state.rawToken = ''; state.patTokenCopied = false; }">
+                        ✅ 确认已保存，关闭
+                      </el-button>
+                    </template>
+                  </el-dialog>
+                </el-card>
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;"><strong>PAT 列表</strong><el-tag>{{ state.tokens.length }} 个</el-tag></div>
+                  </template>
+                  <el-table :data="state.tokens" border stripe size="small" height="320">
+                    <el-table-column prop="token_id" label="Token ID" min-width="190" show-overflow-tooltip>
+                      <template #default="s"><span class="monospace" style="font-size:11px;">{{ s.row.token_id }}</span></template>
+                    </el-table-column>
+                    <el-table-column prop="name" label="名称" min-width="120" show-overflow-tooltip>
+                      <template #default="s"><span>{{ s.row.name || '-' }}</span></template>
+                    </el-table-column>
+                    <el-table-column prop="scopes" label="权限" width="100" show-overflow-tooltip>
+                      <template #default="s">
+                        <span>{{ s.row.scopes || '-' }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="create_by" label="创建者" width="100" show-overflow-tooltip>
+                      <template #default="s">
+                        <span>{{ s.row.create_by || '-' }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="过期时间" width="150">
+                      <template #default="s">
+                        <span v-if="!s.row.expires_at || s.row.expires_at === ('0001-01-01T00:00:00Z'| '')" style="color:var(--muted);font-size:11px;">永不过期</span>
+                        <span v-else-if="isExpired(s.row.expires_at)"><el-tag type="danger" size="small">已过期</el-tag></span>
+                        <span v-else style="font-size:11px;">{{  s.row.expires_at }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="创建时间" width="150">
+                      <template #default="s"><span style="font-size:11px;">{{ s.row.created_at   }}</span></template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="90">
+                      <template #default="s"><el-button size="small" type="danger" plain @click="revokePAT(s.row)">撤销</el-button></template>
+                    </el-table-column>
+                  </el-table>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <!-- 内部接口 -->
+          <el-tab-pane label="内部接口" name="internal">
+            <div class="tab-note">
+              <div class="title">场景：服务间内部接口调试</div>
+              <div>内部接口由 <strong>InternalCheck</strong> 中间件鉴权（HMAC-SHA256 签名），不使用用户 Token。页面自动根据 SecretKey 生成 4 个必要请求头，填写 SecretKey 即可使用。</div>
+            </div>
+            <!-- SecretKey 配置始终展示 -->
+            <el-card class="panel-card" shadow="never" style="margin-bottom:14px;background:#fffbeb;border-color:#fde68a;">
+              <template #header><span style="font-weight:700;">⚙ 内部鉴权配置（HMAC-SHA256）</span></template>
+              <el-form label-position="top" size="small">
+                <el-form-item label="Server SecretKey（config.server.secret_key）">
+                  <el-input v-model="state.internal.secretKey" placeholder="iTXKLT159LUxMfqRSgoxte98pjrPEH6u" show-password />
+                </el-form-item>
+                <div class="muted" style="font-size:11px;">签名算法：HMAC-SHA256(METHOD+PATH+timestamp+nonce, secretKey)，页面自动生成 X-Internal-Call / X-Internal-Signature / X-Internal-Timestamp / X-Internal-Nonce 4 个请求头。</div>
+              </el-form>
+            </el-card>
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="13">
+                <el-tabs v-model="state.internal.activeGroup" type="border-card" size="small">
+                  <!-- 引用计数 -->
+                  <el-tab-pane name="ref">
+                    <template #label><el-tag type="primary" effect="dark" size="small" style="cursor:pointer;">引用计数</el-tag></template>
+                    <el-form label-position="top" size="small" style="padding:10px 0;">
+                      <el-row :gutter="8" style="margin-bottom:8px;">
+                        <el-col :span="8">
+                          <el-form-item label="资源类型">
+                            <el-select v-model="state.internal.resourceType" size="small" style="width:100%;" :teleported="false" popper-class="storage-select-popper">
+                              <el-option v-for="opt in resourceTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                            </el-select>
+                          </el-form-item>
+                        </el-col>
+                        <el-col :span="16">
+                          <el-form-item label="从列表选择资源">
+                            <el-select v-model="state.internal.resourceId" filterable clearable reserve-keyword placeholder="选择或搜索资源" style="width:100%;" :loading="state.internal.loadingResourceOptions" :teleported="false" popper-class="storage-select-popper" @visible-change="(visible) => visible && loadInternalResources()">
+                              <el-option v-for="r in state.internal.resourceOptions" :key="r.resource_id" :label="`${r.name} (${r.resource_id})`" :value="r.resource_id">
+                                <div class="resource-meta">
+                                  <div class="main">{{ r.name }}</div>
+                                  <div class="sub">{{ r.resource_id }} · {{ r.source || '-' }} · {{ r.status || '-' }}</div>
+                                </div>
+                              </el-option>
+                            </el-select>
+                          </el-form-item>
+                        </el-col>
+                      </el-row>
+                      <el-form-item label="Resource ID（手动输入）"><el-input v-model="state.internal.resourceId" placeholder="mr_XXXX 或 ds_XXXX" size="small" /></el-form-item>
+                      <div class="muted" style="font-size:12px;margin-bottom:10px;">任务<strong>启动时</strong>增加引用（+1），任务<strong>结束/取消</strong>时减少引用（-1）。ref_count &gt; 0 的资源禁止用户删除。</div>
+                      <el-space wrap>
+                        <el-button type="primary" size="small" @click="addResourceRef">任务启动：+1</el-button>
+                        <el-button size="small" @click="removeResourceRef">任务结束：-1</el-button>
+                      </el-space>
+                    </el-form>
+                  </el-tab-pane>
+                  <!-- 管理员配额 -->
+                  <el-tab-pane name="admin">
+                    <template #label><el-tag type="warning" effect="dark" size="small" style="cursor:pointer;">管理员配额</el-tag></template>
+                    <el-form label-position="top" size="small" style="padding:10px 0;">
+                      <el-row :gutter="12">
+                        <el-col :span="8"><el-form-item label="租户数字 ID"><el-input v-model="state.internal.tenantId" placeholder="例如 1001" /></el-form-item></el-col>
+                        <el-col :span="8"><el-form-item label="总配额（GB）"><el-input-number v-model="state.internal.totalQuotaGB" :min="1" :max="102400" :step="10" class="full-width" /></el-form-item></el-col>
+                        <el-col :span="8"><el-form-item label="告警阈值 %"><el-input-number v-model="state.internal.alertThreshold" :min="0" :max="100" class="full-width" /></el-form-item></el-col>
+                      </el-row>
+                      <el-space wrap>
+                        <el-button type="warning" size="small" plain @click="setTenantQuota">设置配额</el-button>
+                        <el-button size="small" @click="listAdminQuotas">查询所有租户配额</el-button>
+                      </el-space>
+                    </el-form>
+                  </el-tab-pane>
+                  <!-- 计费查询 -->
+                  <el-tab-pane name="billing">
+                    <template #label><el-tag type="success" effect="dark" size="small" style="cursor:pointer;">计费查询</el-tag></template>
+                    <el-form label-position="top" size="small" style="padding:10px 0;">
+                      <el-form-item label="租户 ID（单个/批量，逗号分隔）"><el-input v-model="state.internal.batchTenantIds" placeholder="1001,1002,1003" /></el-form-item>
+                      <el-space wrap>
+                        <el-button size="small" @click="getBillingQuota">查询单租户</el-button>
+                        <el-button size="small" @click="batchBillingQuota">批量查询</el-button>
+                        <el-button size="small" @click="listBillingQuota">全量列表</el-button>
+                      </el-space>
+                    </el-form>
+                  </el-tab-pane>
+                  <!-- 数据清理 -->
+                  <el-tab-pane name="cleanup">
+                    <template #label><el-tag type="danger" effect="dark" size="small" style="cursor:pointer;">数据清理</el-tag></template>
+                    <el-form label-position="top" size="small" style="padding:10px 0;">
+                      <el-alert title="先用「预演模式」确认清理范围，确认无误后再关闭预演执行实际清理。" type="warning" show-icon :closable="false" style="margin-bottom:14px;" />
+                      <el-row :gutter="12">
+                        <el-col :span="12">
+                          <el-form-item label="数据时间门槛（天前）">
+                            <el-input-number v-model="state.internal.cleanupOlderThanDays" :min="1" :max="365" class="full-width" />
+                            <div class="muted" style="font-size:11px;margin-top:2px;">只清理该天数之前的数据，默认 30 天。</div>
+                          </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                          <el-form-item label="预演模式（Dry Run）">
+                            <el-switch v-model="state.internal.cleanupDryRun" active-text="仅统计，不删除" inactive-text="真实执行" />
+                          </el-form-item>
+                        </el-col>
+                      </el-row>
+                      <el-form-item>
+                        <el-checkbox v-model="state.internal.cleanExpiredUploads">清理过期上传任务（failed / cancelled 状态 + Abort S3 multipart）</el-checkbox>
+                      </el-form-item>
+                      <el-button type="danger" size="small" :plain="state.internal.cleanupDryRun" @click="runCleanup">
+                        {{ state.internal.cleanupDryRun ? '预演清理（不会删除数据）' : '执行清理' }}
+                      </el-button>
+                    </el-form>
+                  </el-tab-pane>
+                </el-tabs>
+              </el-col>
+              <el-col :xs="24" :lg="11">
+                <el-card class="panel-card" shadow="never" style="position:sticky;top:0;">
+                  <template #header>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <strong>接口返回结果</strong>
+                      <div style="display:flex;gap:6px;">
+                        <el-button size="small" @click="copyText(state.internal.lastResponse)" :disabled="!state.internal.lastResponse">复制</el-button>
+                        <el-button size="small" @click="state.internal.lastResponse = ''">清空</el-button>
+                      </div>
+                    </div>
+                  </template>
+                  <pre class="response-box" style="height:380px;max-height:380px;">{{ state.internal.lastResponse || '暂无结果\n\n接口路径说明：\n  引用计数: /internal/v1/storage/resources/{id}/ref\n  管理员配额: /internal/v1/admin/storage/quota/tenant/{id}\n  计费查询: /internal/v1/billing/storage/quota/...' }}</pre>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <!-- 通用调试器 -->
+          <el-tab-pane label="通用调试器" name="playground">
+            <div class="tab-note">
+              <div class="title">场景：原始请求构造与回归测试</div>
+              <div>自由构造任意 HTTP 请求，适合边界场景复现或需要精细控制 Header / Body 的场景。</div>
+            </div>
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="10">
+                <el-card class="panel-card" shadow="never">
+                  <template #header><strong>请求构造器</strong></template>
+                  <el-form label-position="top" size="small">
+                    <el-row :gutter="12">
+                      <el-col :span="8">
+                        <el-form-item label="Method">
+                          <el-select v-model="state.playground.method" class="full-width" :teleported="false" popper-class="storage-select-popper">
+                            <el-option v-for="m in httpMethodOptions" :key="m.value" :label="m.label" :value="m.value" />
+                          </el-select>
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="16"><el-form-item label="Path"><el-input v-model="state.playground.path" placeholder="/api/v2/storage/quota" /></el-form-item></el-col>
+                    </el-row>
+                    <el-form-item label="额外 Headers JSON"><el-input v-model="state.playground.headers" type="textarea" :rows="3" placeholder='{"X-Internal-Token":"xxx"}' /></el-form-item>
+                    <el-form-item label="Body JSON"><el-input v-model="state.playground.body" type="textarea" :rows="7" placeholder='{"page":1,"pageSize":20}' /></el-form-item>
+                    <el-form-item><el-switch v-model="state.playground.useAuth" active-text="携带登录态" inactive-text="匿名请求" /></el-form-item>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <el-button type="primary" size="small" @click="runPlayground">执行请求</el-button>
+                      <el-button size="small" @click="applyPreset('/api/v2/storage/quota','GET')">配额预设</el-button>
+                      <el-button size="small" @click="applyPreset('/api/v2/auth/tokens','GET')">PAT 列表</el-button>
+                    </div>
+                  </el-form>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="14">
+                <el-card class="panel-card" shadow="never">
+                  <template #header><strong>返回结果</strong></template>
+                  <pre class="response-box" style="min-height:460px;max-height:540px;">{{ state.playground.response || '暂无结果' }}</pre>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <!-- 日志中心 -->
+          <el-tab-pane label="日志中心" name="logs">
+            <el-row :gutter="16">
+              <el-col :xs="24" :lg="12">
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div class="toolbar">
+                      <strong>最近一次请求追踪</strong>
+                      <div style="display:flex;gap:6px;">
+                        <el-button size="small" @click="copyText(state.requestTrace)" :disabled="!state.requestTrace">复制</el-button>
+                        <el-button size="small" @click="state.requestTrace=''">清空</el-button>
+                      </div>
+                    </div>
+                  </template>
+                  <pre class="response-box" style="min-height:520px;max-height:560px;">{{ state.requestTrace || '暂无请求追踪信息' }}</pre>
+                </el-card>
+              </el-col>
+              <el-col :xs="24" :lg="12">
+                <el-card class="panel-card" shadow="never">
+                  <template #header>
+                    <div class="toolbar">
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <strong>调试日志</strong>
+                        <el-tag size="small" :type="state.logFilter === 'ERR' ? 'danger' : state.logFilter === 'OK' ? 'success' : 'info'">{{ filteredLogs.length }} / {{ state.logs.length }}</el-tag>
+                      </div>
+                      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <el-select v-model="state.logFilter" size="small" style="width:96px;" :teleported="false" popper-class="storage-select-popper" @change="() => {}">
+                          <el-option v-for="opt in logFilterOptions" :key="String(opt.value)" :label="opt.label" :value="opt.value" />
+                        </el-select>
+                        <el-input v-model="state.logKeyword" size="small" placeholder="关键词过滤" clearable style="width:130px;" />
+                        <el-button size="small" @click="copyLogs">复制全部</el-button>
+                        <el-button size="small" @click="clearLogs">清空</el-button>
+                      </div>
+                    </div>
+                  </template>
+                  <el-scrollbar ref="logsScrollbarRef" height="540px">
+                    <div class="logs">
+                      <div v-if="!filteredLogs.length" class="log-line" style="padding:12px 10px;color:#475569;">暂无日志{{ state.logFilter || state.logKeyword ? '（当前过滤条件无匹配）' : '' }}</div>
+                      <div v-for="(line,idx) in filteredLogs" :key="idx"
+                        class="log-line"
+                        :class="logLineClass(line)"
+                        @click="copyText(line)"
+                        :title="'点击复制此行'">
+                        <span class="log-ts">{{ logTs(line) }}</span>
+                        <span class="log-msg">{{ logBody(line) }}</span>
+                      </div>
+                    </div>
+                  </el-scrollbar>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+        </el-tabs>
+      </el-scrollbar>
+    </el-container>
+  </el-container>
+
+  <!-- 资源详情 Drawer -->
+  <el-drawer v-model="state.detailVisible" size="72%" :title="state.detail ? (resourceTypeLabel(state.detail.resource_type) + ' · ' + state.detail.name) : '资源详情'">
+    <template v-if="state.detail">
+      <el-tabs v-model="state.detailView" class="detail-tabs">
+        <el-tab-pane label="仓库详情" name="overview">
+          <div class="resource-overview drawer-summary">
+            <div class="resource-stat">
+              <div class="label">资源文件总数</div>
+              <div class="value">{{ Number(state.detail.file_count || detailFilteredFiles.length || 0) }}</div>
+              <div class="desc">资源详情返回的文件总量</div>
+            </div>
+            <div class="resource-stat">
+              <div class="label">筛选后文件</div>
+              <div class="value">{{ detailFilteredFiles.length }}</div>
+              <div class="desc">当前筛选条件下可见文件</div>
+            </div>
+            <div class="resource-stat">
+              <div class="label">目录数</div>
+              <div class="value">{{ detailSummary.folderCount }}</div>
+              <div class="desc">按文件路径推导的目录层级</div>
+            </div>
+            <div class="resource-stat">
+              <div class="label">就绪 / 异常</div>
+              <div class="value">{{ detailSummary.readyCount }} / {{ detailSummary.failedCount }}</div>
+              <div class="desc">用于快速判断文件处理状态</div>
+            </div>
+          </div>
+          <el-descriptions :column="2" border size="small" style="margin-bottom:14px;">
+            <el-descriptions-item label="名称" :span="2">{{ state.detail.name }}</el-descriptions-item>
+            <el-descriptions-item label="资源 ID"><span class="monospace" style="font-size:11px;">{{ state.detail.resource_id }}</span></el-descriptions-item>
+            <el-descriptions-item label="状态"><el-tag :type="statusTagType(state.detail.status)" size="small">{{ state.detail.status }}</el-tag></el-descriptions-item>
+            <el-descriptions-item label="来源">{{ state.detail.source || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="可见性">{{ visibilityText(state.detail.visibility) }}</el-descriptions-item>
+            <el-descriptions-item label="类型">{{ state.detail.resource_type === 'model' ? (state.detail.model_type || '-') : (state.detail.dataset_type || '-') }}</el-descriptions-item>
+            <el-descriptions-item label="训练信息">{{ state.detail.resource_type === 'dataset' ? ((state.detail.train_scene || '-') + (state.detail.train_method ? ' / ' + state.detail.train_method : '')) : (state.detail.data_type || '-') }}</el-descriptions-item>
+            <el-descriptions-item label="总大小">{{ formatBytes(state.detail.total_size||0) }}</el-descriptions-item>
+            <el-descriptions-item label="文件数">{{ Number(state.detail.file_count || detailFilteredFiles.length || 0) }}</el-descriptions-item>
+            <el-descriptions-item label="引用数">{{ state.detail.ref_count || 0 }}</el-descriptions-item>
+            <el-descriptions-item label="创建来源附加">{{ state.detail.base_model_id || state.detail.finetune_job_id || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="描述" :span="2">{{ state.detail.description || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="标签" :span="2">
+              <el-space v-if="state.detail.labels && state.detail.labels.length" wrap><el-tag v-for="lb in state.detail.labels" :key="lb" size="small" effect="plain">{{ lb }}</el-tag></el-space>
+              <span v-else>-</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="创建时间">{{ state.detail.created_at }}</el-descriptions-item>
+            <el-descriptions-item label="更新时间">{{ state.detail.updated_at }}</el-descriptions-item>
+            <el-descriptions-item label="错误信息" :span="2" v-if="state.detail.error_msg"><span style="color:var(--danger);">{{ state.detail.error_msg }}</span></el-descriptions-item>
+          </el-descriptions>
+        </el-tab-pane>
+        <el-tab-pane label="文件清单" name="files">
+          <div class="detail-toolbar">
+            <div>
+              <div class="title">文件清单</div>
+              <div class="desc">支持按路径搜索、按状态筛选，并通过前端分页浏览当前资源的完整文件列表。</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <el-input v-model="state.detailFilters.keyword" size="small" clearable placeholder="搜索文件名 / 路径" style="width:220px;">
+                <template #prefix><el-icon><Search /></el-icon></template>
+              </el-input>
+              <el-select v-model="state.detailFilters.status" size="small" clearable placeholder="状态" style="width:120px;" :teleported="false" popper-class="storage-select-popper">
+                <el-option label="全部状态" value="" />
+                <el-option v-for="opt in detailFileStatusOptions" :key="opt" :label="opt" :value="opt" />
+              </el-select>
+              <el-select v-model="state.detailFilters.sortBy" size="small" style="width:150px;" :teleported="false" popper-class="storage-select-popper">
+                <el-option label="路径 A-Z" value="path-asc" />
+                <el-option label="路径 Z-A" value="path-desc" />
+                <el-option label="大小从大到小" value="size-desc" />
+                <el-option label="大小从小到大" value="size-asc" />
+              </el-select>
+            </div>
+          </div>
+          <el-table :data="detailPagedFiles" border size="small" max-height="420" row-key="filename" scrollbar-always-on table-layout="auto">
+            <el-table-column label="#" width="70" align="center">
+              <template #default="s">{{ detailRowIndex(s.$index) }}</template>
+            </el-table-column>
+            <el-table-column label="文件路径" min-width="320" show-overflow-tooltip>
+              <template #default="s">
+                <div class="file-meta">
+                  <div class="main">{{ s.row.filename }}</div>
+                  <div class="sub">目录：{{ s.row.directory || '/' }}</div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="扩展名" width="160" show-overflow-tooltip>
+              <template #default="s"><span class="monospace">{{ s.row.extension || '-' }}</span></template>
+            </el-table-column>
+            <el-table-column label="大小" width="120" align="right"><template #default="s">{{ formatBytes(s.row.file_size||0) }}</template></el-table-column>
+            <!-- <el-table-column prop="content_type" label="Content-Type" min-width="180" show-overflow-tooltip /> -->
+            <el-table-column prop="status" label="状态" width="110"><template #default="s"><el-tag :type="statusTagType(s.row.status)" size="small">{{ s.row.status }}</el-tag></template></el-table-column>
+            <!-- <el-table-column label="下载" width="100" fixed="right">
+              <template #default="s">
+                <el-button size="small" type="primary" link @click="downloadSingle(state.detail.resource_id, s.row.filename)">
+                  <el-icon><Download /></el-icon><span>打开</span>
+                </el-button>
+              </template>
+            </el-table-column> -->
+          </el-table>
+          <div v-if="!detailPagedFiles.length" class="table-empty-note">当前筛选条件下没有文件。</div>
+          <div class="table-footer">
+            <div class="muted">当前显示 {{ detailPagedFiles.length }} / {{ detailFilteredFiles.length }} 个文件，总文件数 {{ Number(state.detail.file_count || detailFilteredFiles.length || 0) }}。</div>
+            <el-pagination
+              background
+              layout="total, sizes, prev, pager, next"
+              :total="detailFilteredFiles.length"
+              :current-page="state.detailFilters.page"
+              :page-size="state.detailFilters.pageSize"
+              :page-sizes="state.detailFilters.pageSizes"
+              @current-change="handleDetailPageChange"
+              @size-change="handleDetailPageSizeChange"
+            />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+    </template>
+  </el-drawer>
+
+  <!-- 编辑 Dialog -->
+  <el-dialog v-model="state.editVisible" title="编辑资源元信息" width="560px">
+    <el-form label-position="top" size="small">
+      <el-form-item label="名称"><el-input v-model="state.editForm.name" /></el-form-item>
+      <el-form-item label="描述"><el-input v-model="state.editForm.description" type="textarea" :rows="1" /></el-form-item>
+      <el-form-item label="标签（逗号分隔）"><el-input v-model="state.editForm.labels" placeholder="tag1,tag2" /></el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="state.editVisible=false">取消</el-button>
+      <el-button type="primary" @click="saveEdit">保存</el-button>
+    </template>
+  </el-dialog>
+
+  <el-dialog v-model="state.errorDialog.visible" width="680px" title="请求异常" destroy-on-close>
+    <div class="error-panel">
+      <div class="title">{{ state.errorDialog.title || '请求异常' }}</div>
+      <div class="message">{{ state.errorDialog.message || '请求未成功完成，请检查参数、登录态或服务端日志。' }}</div>
+    </div>
+    <el-descriptions :column="1" border size="small" style="margin-top:14px;">
+      <el-descriptions-item label="请求路径">{{ state.errorDialog.path || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="HTTP 状态">{{ state.errorDialog.statusCode || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="Request ID">{{ state.errorDialog.requestId || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="处理建议">{{ state.errorDialog.suggestion || '检查筛选条件、租户和登录态后重试。' }}</el-descriptions-item>
+    </el-descriptions>
+    <div style="margin-top:14px;font-size:12px;font-weight:700;color:#344054;">错误详情</div>
+    <pre class="response-box" style="min-height:180px;max-height:320px;margin-top:8px;">{{ state.errorDialog.detail || '暂无详情' }}</pre>
+    <template #footer>
+      <el-button @click="copyText(state.errorDialog.detail || state.requestTrace)">复制详情</el-button>
+      <el-button type="primary" @click="state.errorDialog.visible = false">关闭</el-button>
+    </template>
+  </el-dialog>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus/dist/index.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue/dist/index.iife.min.js"></script>
+<script>
+const { createApp, reactive, computed, ref, watch, nextTick, onMounted } = Vue;
+const { ElMessage, ElMessageBox } = ElementPlus;
+const iconRegistry = window.ElementPlusIconsVue || {};
+
+const app = createApp({
+  setup() {
+    const Search = iconRegistry.Search || null;
+    const View = iconRegistry.View || null;
+    const EditPen = iconRegistry.EditPen || null;
+    const Delete = iconRegistry.Delete || null;
+    const Download = iconRegistry.Download || null;
+    const Setting = iconRegistry.Setting || null;
+    const resourceTypeOptions = [{ label: '模型', value: 'model' }, { label: '数据集', value: 'dataset' }];
+    const sourceOptions = [
+      { label: '上传', value: 'upload' },
+      { label: '导入', value: 'import' },
+      { label: '微调', value: 'finetune' },
+      { label: '系统', value: 'system' },
+    ];
+    const resourceStatusOptions = [
+      { label: '全部', value: '' },
+      { label: '初始化', value: 'init' },
+      { label: '上传中', value: 'uploading' },
+      { label: '解压中', value: 'extracting' },
+      { label: '可用', value: 'available' },
+      { label: '失败', value: 'failed' },
+      { label: '已删除', value: 'deleted' },
+    ];
+    const modelTypeOptions = [
+      { label: 'llm', value: 'llm' },
+      { label: 'embedding', value: 'embedding' },
+      { label: 'multimodal', value: 'multimodal' },
+    ];
+    const datasetTypeOptions = [
+      { label: 'text', value: 'text' },
+      { label: 'image', value: 'image' },
+      { label: 'audio', value: 'audio' },
+    ];
+    const trainSceneOptions = [
+      { label: 'finetune', value: 'finetune' },
+      { label: 'pretrain', value: 'pretrain' },
+      { label: 'eval', value: 'eval' },
+    ];
+    const systemFlagOptions = [{ label: '系统模型', value: 1 }, { label: '租户模型', value: 0 }];
+    const tokenScopeOptions = [
+      { label: 'storage:rw（读写）', value: 'storage:rw' },
+      { label: 'storage:r（只读）', value: 'storage:r' },
+      { label: 'storage:w（只写）', value: 'storage:w' },
+    ];
+    const httpMethodOptions = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((value) => ({ label: value, value }));
+    const logFilterOptions = [
+      { label: '全部', value: '' },
+      { label: 'ERR', value: 'ERR' },
+      { label: 'OK', value: 'OK' },
+      { label: 'REQ', value: 'REQ' },
+      { label: '⚠', value: '⚠' },
+    ];
+    const resourceColumnOptions = [
+      { label: '资源 ID', value: 'resourceId', width: 200 },
+      { label: '状态', value: 'status', width: 100 },
+      { label: '来源', value: 'source', width: 96 },
+      { label: '类型 / 场景', value: 'typeScene', width: 150 },
+      { label: '文件数', value: 'fileCount', width: 92 },
+      { label: '总大小', value: 'totalSize', width: 100 },
+      { label: '可见性', value: 'visibility', width: 90 },
+      { label: '引用数', value: 'refCount', width: 92 },
+      { label: '描述', value: 'description', width: 120 },
+      { label: '标签', value: 'labels', width: 130 },
+      { label: '创建时间', value: 'createdAt', width: 150 },
+      { label: '创建者', value: 'creator', width: 120 },
+    ];
+    const state = reactive({
+      activeTab: 'upload', apiBase: 'http://192.168.0.65:8080',
+	      urlMode: 'public',
+      loginMode: 'main', mainPhone: '18373639691', mainPassword: 'Admin@798!',
+      subUsername: 'felix-subaccount-01', subPassword: 'test1234',
+      activeTenant: 'tCROwgAd29A', tenantOptions: [], loadingTenants: false,
+      token: '', currentUser: '', loggingIn: false,
+      loadingResources: false, loadingQuota: false,
+      listType: 'dataset', filterStatus: '', keyword: '',
+      resourcePager: { page: 1, pageSize: 20, total: 0, pageSizes: [10, 20, 50, 100] },
+      listFilters: { source: '', modelType: '', datasetType: '', trainScene: '', trainMethod: '', label: '', isSystem: '' },
+      resources: [], detailVisible: false, detail: null, detailFiles: [], detailView: 'overview',
+      resourceColumns: ['resourceId', 'status', 'source', 'typeScene', 'fileCount', 'totalSize', 'visibility', 'refCount', 'labels', 'createdAt', 'creator'],
+      detailFilters: { keyword: '', status: '', sortBy: 'path-asc', page: 1, pageSize: 10, pageSizes: [10, 20, 50, 100] },
+      editVisible: false, editForm: { resourceId: '', type: 'dataset', name: '', description: '', labels: '' },
+      quota: {}, logs: [], requestTrace: '', pollTimer: null,
+      rawToken: '', patDialogVisible: false, tokens: [], manualUploadId: '',
+      logFilter: '', logKeyword: '',
+      errorDialog: { visible: false, title: '', message: '', detail: '', path: '', statusCode: '', requestId: '', suggestion: '' },
+      tokenForm: { name: 'manual-token', scopes: 'storage:rw', expiresInDays: 30 },
+      internal: { secretKey: 'iTXKLT159LUxMfqRSgoxte98pjrPEH6u', activeGroup: 'ref', resourceId: '', resourceType: 'model', resourceOptions: [], loadingResourceOptions: false, tenantId: '', totalQuotaGB: 200, alertThreshold: 80, batchTenantIds: '', lastResponse: '', cleanupDryRun: true, cleanExpiredUploads: true, cleanupOlderThanDays: 30 },
+      playground: { method: 'GET', path: '/api/v2/storage/quota', headers: '{}', body: '', useAuth: true, response: '' },
+      form: { resourceType: 'dataset', chunkSizeMB: 50, concurrency: 4, name: '', description: 'manual web test', labels: 'manual,e2e-test', modelType: 'llm', datasetType: 'text', trainScene: 'finetune', file: null, files: [] },
+      upload: { working: false, uploadId: '', resourceId: '', status: 'idle', resourceStatus: '', progress: 0,
+        uploadedCount: 0, totalParts: 0, errorMsg: '', speed: '', eta: '',
+        recommendedConcurrency: 0, maxPartURLBatch: 0, effectiveConcurrency: 4, effectivePartURLBatch: 20,
+        uploadedPartNumbers: [],
+        _startTime: 0, _sentBytes: 0,
+        // multi-file tracking
+        totalFiles: 0, doneFiles: 0, currentFileIdx: 0,
+        currentFileName: '', currentFileSize: 0, currentFilePct: 0,
+        totalBytes: 0, sentBytes: 0,
+      },
+      resumeSession: { uploadId: '', resourceId: '', mode: '', filename: '', fileSize: 0, contentType: '', resourceName: '', resourceType: '', description: '', labels: '', modelType: '', datasetType: '', trainScene: '', chunkSizeMB: 50, concurrency: 4, canResume: false },
+      // 追加文件
+      appendForm: { resourceType: 'model', resourceId: '', resourceOptions: [], loadingOptions: false, chunkSizeMB: 50, concurrency: 4, file: null, files: [] },
+      appendUpload: { working: false, uploadId: '', status: 'idle', progress: 0, uploadedCount: 0, totalParts: 0, errorMsg: '', speed: '', eta: '', recommendedConcurrency: 0, maxPartURLBatch: 0, effectiveConcurrency: 4, effectivePartURLBatch: 20, totalFiles: 0, doneFiles: 0, currentFileName: '', currentFileSize: 0, currentFilePct: 0, totalBytes: 0, sentBytes: 0, _startTime: 0, _sentBytes: 0 },
+      // PAT 已复制确认
+      patTokenCopied: false,
+    });
+
+    const addLog = (msg) => { const t = new Date().toLocaleTimeString(); state.logs.push(`[${t}] ${msg}`); state.logs = state.logs.slice(-800); };
+    const clearLogs = () => { state.logs = []; state.requestTrace = ''; };
+    const UPLOAD_SESSION_KEY = 'storage-debug-upload-session';
+    const MAX_PART_UPLOAD_ATTEMPTS = 3;
+    // 登录会话本地缓存：登录成功后写入，下次打开页面自动恢复，无需重复登录。
+    // 注意：此控制台仅用于内部联调，token 直接保存在 localStorage；外部环境慎用。
+    const AUTH_SESSION_KEY = 'storage-debug-auth-session';
+    const AUTH_SESSION_VERSION = 1;
+    const loadSavedAuthSession = () => {
+      try {
+        const raw = localStorage.getItem(AUTH_SESSION_KEY);
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        if (!saved || saved.v !== AUTH_SESSION_VERSION) return null;
+        if (!saved.token) return null;
+        return saved;
+      } catch (_) { return null; }
+    };
+    const persistAuthSession = () => {
+      if (!state.token) return;
+      try {
+        const snapshot = {
+          v: AUTH_SESSION_VERSION,
+          savedAt: Date.now(),
+          apiBase: state.apiBase,
+          loginMode: state.loginMode,
+          mainPhone: state.mainPhone,
+          subUsername: state.subUsername,
+          token: state.token,
+          currentUser: state.currentUser,
+          activeTenant: state.activeTenant,
+          tenantOptions: state.tenantOptions,
+          urlMode: state.urlMode,
+        };
+        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(snapshot));
+      } catch (_) { /* 配额或隐私模式失败时静默忽略 */ }
+    };
+    const clearAuthSession = () => {
+      try { localStorage.removeItem(AUTH_SESSION_KEY); } catch (_) {}
+    };
+    // 仅恢复偏好（API 地址、账号、模式等），不依赖 token。即使没有缓存登录态也会执行。
+    const applyAuthPreferences = (saved) => {
+      if (!saved) return;
+      if (saved.apiBase) state.apiBase = saved.apiBase;
+      if (saved.loginMode === 'main' || saved.loginMode === 'sub') state.loginMode = saved.loginMode;
+      if (saved.mainPhone) state.mainPhone = saved.mainPhone;
+      if (saved.subUsername) state.subUsername = saved.subUsername;
+      if (saved.urlMode === 'public' || saved.urlMode === 'internal') state.urlMode = saved.urlMode;
+    };
+    // 恢复完整登录态：写入 token、租户、用户名等，并在后台尝试拉一次基础数据验证 token 有效性。
+    const restoreAuthSession = async () => {
+      const saved = loadSavedAuthSession();
+      applyAuthPreferences(saved);
+      if (!saved || !saved.token) return false;
+      state.token = saved.token;
+      state.currentUser = saved.currentUser || '';
+      if (Array.isArray(saved.tenantOptions) && saved.tenantOptions.length) {
+        state.tenantOptions = saved.tenantOptions;
+      }
+      if (saved.activeTenant) state.activeTenant = saved.activeTenant;
+      addLog(`已从本地恢复登录态：${state.currentUser || '-'} / tenant=${state.activeTenant || '-'}`);
+      // 尝试用恢复的 token 拉一次配额，验证 token 是否依然有效；
+      // apiRequest 在 401 时会触发 clearAuthSession（见 apiRequest 内的 401 处理）。
+      try {
+        await refreshAll();
+        await restoreUploadSession();
+      } catch (_) { /* 失败时由 401 处理逻辑负责清理 */ }
+      return true;
+    };
+    const logout = (opts = {}) => {
+      const silent = !!opts.silent;
+      state.token = '';
+      state.currentUser = '';
+      state.tokens = [];
+      state.quota = {};
+      state.resources = [];
+      clearAuthSession();
+      if (!silent) {
+        ElMessage.success('已退出登录');
+        addLog('已退出登录，本地登录态已清除');
+      }
+    };
+    const emptyResumeSession = () => ({ uploadId: '', resourceId: '', mode: '', filename: '', fileSize: 0, contentType: '', resourceName: '', resourceType: '', description: '', labels: '', modelType: '', datasetType: '', trainScene: '', chunkSizeMB: 50, concurrency: 4, canResume: false });
+    const buildResumeMeta = () => {
+      const file = state.form.file;
+      const folderMode = !!(state.form.files && state.form.files.length);
+      return {
+        mode: folderMode ? 'folder' : 'single',
+        filename: folderMode ? '' : ((file && file.name) || state.upload.currentFileName || ''),
+        fileSize: folderMode ? 0 : Number((file && file.size) || state.upload.currentFileSize || state.upload.totalBytes || 0),
+        contentType: folderMode ? '' : ((file && file.type) || ''),
+        resourceName: state.form.name || '',
+        resourceType: state.form.resourceType || 'dataset',
+        description: state.form.description || '',
+        labels: state.form.labels || '',
+        modelType: state.form.modelType || '',
+        datasetType: state.form.datasetType || '',
+        trainScene: state.form.trainScene || '',
+        chunkSizeMB: Number(state.form.chunkSizeMB || 50),
+        concurrency: Number(state.form.concurrency || 4),
+      };
+    };
+    const loadSavedUploadSession = () => {
+      const raw = localStorage.getItem(UPLOAD_SESSION_KEY);
+      if (!raw) return null;
+      try {
+        const saved = JSON.parse(raw);
+        return saved && saved.upload && saved.upload.uploadId ? saved : null;
+      } catch (_) {
+        return null;
+      }
+    };
+    const syncResumeSession = (saved) => {
+      const resume = saved && saved.resume ? saved.resume : null;
+      if (!saved || !saved.upload || !saved.upload.uploadId || !resume) {
+        Object.assign(state.resumeSession, emptyResumeSession());
+        return null;
+      }
+      Object.assign(state.resumeSession, {
+        uploadId: saved.upload.uploadId || '',
+        resourceId: saved.upload.resourceId || '',
+        mode: resume.mode || '',
+        filename: resume.filename || saved.upload.currentFileName || '',
+        fileSize: Number(resume.fileSize || saved.upload.totalBytes || 0),
+        contentType: resume.contentType || '',
+        resourceName: resume.resourceName || '',
+        resourceType: resume.resourceType || 'dataset',
+        description: resume.description || '',
+        labels: resume.labels || '',
+        modelType: resume.modelType || '',
+        datasetType: resume.datasetType || '',
+        trainScene: resume.trainScene || '',
+        chunkSizeMB: Number(resume.chunkSizeMB || 50),
+        concurrency: Number(resume.concurrency || 4),
+        canResume: resume.mode === 'single' && !!saved.upload.resourceId,
+      });
+      return saved;
+    };
+    const hydrateFormFromResumeSession = () => {
+      if (!state.resumeSession.uploadId) return;
+      state.form.resourceType = state.resumeSession.resourceType || state.form.resourceType;
+      state.form.name = state.resumeSession.resourceName || state.form.name;
+      state.form.description = state.resumeSession.description || state.form.description;
+      state.form.labels = state.resumeSession.labels || state.form.labels;
+      state.form.modelType = state.resumeSession.modelType || state.form.modelType;
+      state.form.datasetType = state.resumeSession.datasetType || state.form.datasetType;
+      state.form.trainScene = state.resumeSession.trainScene || state.form.trainScene;
+      state.form.chunkSizeMB = Number(state.resumeSession.chunkSizeMB || state.form.chunkSizeMB || 50);
+      state.form.concurrency = Number(state.resumeSession.concurrency || state.form.concurrency || 4);
+    };
+    const isSameResumeFile = (file) => {
+      if (!file || !state.resumeSession.canResume) return false;
+      return file.name === state.resumeSession.filename && Number(file.size) === Number(state.resumeSession.fileSize || 0);
+    };
+    const resumeFileReady = computed(() => isSameResumeFile(state.form.file));
+    const resumeFolderReady = computed(() => {
+      if (state.resumeSession.mode !== 'folder' || !state.resumeSession.resourceId) return false;
+      if (!(state.form.files && state.form.files.length)) return false;
+      return String(state.form.resourceType || '') === String(state.resumeSession.resourceType || '')
+        && String((state.form.name || '').trim()) === String((state.resumeSession.resourceName || '').trim());
+    });
+    const snapshotUploadState = () => ({
+      urlMode: state.urlMode,
+      tenant: state.activeTenant,
+      resume: buildResumeMeta(),
+      upload: {
+        uploadId: state.upload.uploadId,
+        resourceId: state.upload.resourceId,
+        status: state.upload.status,
+        resourceStatus: state.upload.resourceStatus,
+        progress: state.upload.progress,
+        totalParts: state.upload.totalParts,
+        uploadedCount: state.upload.uploadedCount,
+        uploadedPartNumbers: state.upload.uploadedPartNumbers || [],
+        currentFileName: state.upload.currentFileName,
+        totalBytes: state.upload.totalBytes,
+        sentBytes: state.upload.sentBytes,
+        errorMsg: state.upload.errorMsg,
+      },
+    });
+    const persistUploadSession = () => {
+      if (!state.upload.uploadId) return;
+      const snapshot = snapshotUploadState();
+      localStorage.setItem(UPLOAD_SESSION_KEY, JSON.stringify(snapshot));
+      syncResumeSession(snapshot);
+    };
+    const clearUploadSession = () => {
+      localStorage.removeItem(UPLOAD_SESSION_KEY);
+      Object.assign(state.resumeSession, emptyResumeSession());
+    };
+    const isAsyncUploadStatus = (status) => ['uploading', 'completing', 'extracting'].includes(status);
+    const isFileAlreadyExistsError = (err) => String((err && err.message) || '').toLowerCase().includes('file already exists in this resource');
+    const restoreUploadSession = async () => {
+      const saved = syncResumeSession(loadSavedUploadSession());
+      if (!saved) return;
+      try {
+        if (saved.tenant && state.activeTenant && saved.tenant !== state.activeTenant) return;
+        state.urlMode = saved.urlMode || state.urlMode;
+        hydrateFormFromResumeSession();
+        Object.assign(state.upload, saved.upload);
+        state.manualUploadId = saved.upload.uploadId;
+        addLog(`已恢复本地上传会话：${saved.upload.uploadId}`);
+        if (state.token) {
+          await pollUpload(saved.upload.uploadId, {
+            includeParts: !(saved.upload.uploadedPartNumbers && saved.upload.uploadedPartNumbers.length),
+            refreshPartNumbers: true,
+          });
+        }
+      } catch (_) {
+        clearUploadSession();
+      }
+    };
+
+    // 日志列表滚动到底部
+    const logsScrollbarRef = ref(null);
+    watch(() => state.logs.length, () => {
+      nextTick(() => {
+        if (logsScrollbarRef.value) {
+          logsScrollbarRef.value.setScrollTop(999999);
+        }
+      });
+    });
+    // 内部接口：资源类型切换时清空选项，下次 focus 时重新加载
+    watch(() => state.internal.resourceType, () => {
+      state.internal.resourceOptions = [];
+      state.internal.resourceId = '';
+    });
+    // 关键登录上下文变更时即时同步到 localStorage，保证下次打开恢复到一致状态。
+    // 仅在已登录时同步（避免登出场景被恢复回来）。
+    watch(
+      () => [state.activeTenant, state.urlMode, state.apiBase, state.loginMode, state.mainPhone, state.subUsername],
+      () => { if (state.token) persistAuthSession(); }
+    );
+    watch(() => state.listType, () => {
+      state.filterStatus = '';
+      state.keyword = '';
+      state.resourcePager.page = 1;
+      Object.assign(state.listFilters, { source: '', modelType: '', datasetType: '', trainScene: '', trainMethod: '', label: '', isSystem: '' });
+    });
+    watch(() => [state.detailFilters.keyword, state.detailFilters.status, state.detailFilters.sortBy], () => {
+      state.detailFilters.page = 1;
+    });
+
+    const formatBytes = (bytes) => {
+      const n = Number(bytes || 0); if (!n) return '0 B';
+      const u = ['B','KB','MB','GB','TB']; let i = 0, v = n;
+      while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+      return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${u[i]}`;
+    };
+    const fmtTime = (ts) => { if (!ts) return '-'; const d = new Date(ts); return isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN', { hour12: false }); };
+    const isExpired = (ts) => { if (!ts) return false; return new Date(ts) < new Date(); };
+    const statusTagType = (s) => {
+      if (s === 'available' || s === 'completed') return 'success';
+      if (s === 'failed' || s === 'deleted' || s === 'cancelled') return 'danger';
+      if (s === 'extracting' || s === 'completing') return 'warning';
+      return 'info';
+    };
+    const fmtSpeed = (bps) => !bps ? '-' : (bps / (1024 * 1024)).toFixed(2) + ' MB/s';
+    const formatGB = (bytes) => { const n = Number(bytes || 0); if (n < 0) return '不限'; return (n / (1024**3)).toFixed(2) + ' GB'; };
+    const fmtETA = (rem, bps) => { if (!bps || !rem) return '-'; const s = Math.ceil(rem / bps); if (s < 60) return s + 's'; if (s < 3600) return Math.ceil(s/60) + 'min'; return (s/3600).toFixed(1) + 'h'; };
+    const safeJsonParse = (text, fb = {}) => { if (!text || !String(text).trim()) return fb; try { return JSON.parse(text); } catch (e) { throw new Error('JSON 格式不正确：' + e.message); } };
+    const ensureAuth = () => { if (!state.token) { ElMessage.warning('请先登录'); return false; } return true; };
+    const maskHeaders = (h = {}) => { const c = Object.assign({}, h); if (c.Authorization) { const t = String(c.Authorization); c.Authorization = t.length > 20 ? t.slice(0, 18) + '...' : t; } return c; };
+    const visibilityText = (visibility) => Number(visibility) === 1 ? '公开' : '私有';
+    const normalizeResourceItem = (item = {}) => ({
+      ...item,
+      total_size: Number(item.total_size || 0),
+      file_count: Number(item.file_count || 0),
+      ref_count: Number(item.ref_count || 0),
+      visibility: Number(item.visibility || 0),
+      labels: Array.isArray(item.labels) ? item.labels : [],
+    });
+    const normalizeDetailFile = (file = {}) => {
+      const filename = file.filename || '';
+      const lastSlash = filename.lastIndexOf('/');
+      const baseName = lastSlash >= 0 ? filename.slice(lastSlash + 1) : filename;
+      const extMatch = baseName.match(/(\.[^.]+(?:\.[^.]+)?)$/);
+      return {
+        ...file,
+        filename,
+        file_size: Number(file.file_size || 0),
+        directory: lastSlash >= 0 ? filename.slice(0, lastSlash) : '/',
+        extension: extMatch ? extMatch[1] : '',
+      };
+    };
+    const singleUploadAccept = computed(() => state.form.resourceType === 'dataset' ? '.jsonl,.jsonlines,.zip,.tar,.tar.gz' : '');
+    const appendUploadAccept = computed(() => state.appendForm.resourceType === 'dataset' ? '.jsonl,.jsonlines,.zip,.tar,.tar.gz' : '');
+    const uploadFileHint = computed(() => state.form.resourceType === 'dataset'
+      ? '支持 .jsonl / .jsonlines / zip / tar / tar.gz，也支持文件夹（每个文件独立直传）。'
+      : '支持普通文件、zip、tar、tar.gz，也支持文件夹（每个文件独立直传）。');
+    const resourcePageCount = computed(() => Math.max(1, Math.ceil((state.resourcePager.total || 0) / (state.resourcePager.pageSize || 20))));
+    const resourceTableMinWidth = computed(() => {
+      const widthMap = resourceColumnOptions.reduce((acc, item) => {
+        acc[item.value] = item.width;
+        return acc;
+      }, {});
+      return 260 + 260 + state.resourceColumns.reduce((sum, key) => sum + (widthMap[key] || 120), 0);
+    });
+    const resourceTableSummary = computed(() => state.resources.reduce((acc, item) => {
+      acc.fileCount += Number(item.file_count || 0);
+      acc.refCount += Number(item.ref_count || 0);
+      if (Number(item.ref_count || 0) > 0) acc.referencedResourceCount += 1;
+      return acc;
+    }, { fileCount: 0, refCount: 0, referencedResourceCount: 0 }));
+    const detailFileStatusOptions = computed(() => Array.from(new Set((state.detailFiles || []).map((item) => item.status).filter(Boolean))));
+    const detailFilteredFiles = computed(() => {
+      const keyword = (state.detailFilters.keyword || '').trim().toLowerCase();
+      const status = state.detailFilters.status || '';
+      const sortBy = state.detailFilters.sortBy || 'path-asc';
+      const items = (state.detailFiles || []).filter((item) => {
+        if (status && item.status !== status) return false;
+        if (keyword && !String(item.filename || '').toLowerCase().includes(keyword)) return false;
+        return true;
+      }).slice();
+      items.sort((a, b) => {
+        if (sortBy === 'size-desc') return Number(b.file_size || 0) - Number(a.file_size || 0);
+        if (sortBy === 'size-asc') return Number(a.file_size || 0) - Number(b.file_size || 0);
+        if (sortBy === 'path-desc') return String(b.filename || '').localeCompare(String(a.filename || ''), 'zh-CN');
+        return String(a.filename || '').localeCompare(String(b.filename || ''), 'zh-CN');
+      });
+      return items;
+    });
+    const detailPagedFiles = computed(() => {
+      const start = (state.detailFilters.page - 1) * state.detailFilters.pageSize;
+      return detailFilteredFiles.value.slice(start, start + state.detailFilters.pageSize);
+    });
+    const detailSummary = computed(() => {
+      const folders = new Set();
+      let readyCount = 0;
+      let failedCount = 0;
+      (state.detailFiles || []).forEach((item) => {
+        if (item.directory && item.directory !== '/') folders.add(item.directory);
+        if (item.status === 'available' || item.status === 'completed') readyCount += 1;
+        if (item.status === 'failed') failedCount += 1;
+      });
+      return { folderCount: folders.size, readyCount, failedCount };
+    });
+    const hasResourceColumn = (key) => state.resourceColumns.includes(key);
+    const resourceTypeLabel = (type) => type === 'model' ? '模型仓库' : '数据集';
+    const applyUploadHints = (target, initData, requestedConcurrency) => {
+      target.recommendedConcurrency = Math.max(0, Number(initData && initData.recommended_part_concurrency || 0));
+      target.maxPartURLBatch = Math.max(0, Number(initData && initData.max_part_url_batch || 0));
+      target.effectiveConcurrency = Math.max(1, Math.min(16, Number(requestedConcurrency || 4)));
+      target.effectivePartURLBatch = Math.max(1, Number(target.maxPartURLBatch || 20));
+    };
+    const resetUploadHints = (target, fallbackConcurrency) => {
+      target.recommendedConcurrency = 0;
+      target.maxPartURLBatch = 0;
+      target.effectiveConcurrency = Math.max(1, Math.min(16, Number(fallbackConcurrency || 4)));
+      target.effectivePartURLBatch = 20;
+    };
+    const showErrorDialog = ({ title, message, detail, path, statusCode, requestId, suggestion }) => {
+      Object.assign(state.errorDialog, {
+        visible: true,
+        title: title || '请求异常',
+        message: message || '请求未成功完成，请稍后重试。',
+        detail: detail || '',
+        path: path || '',
+        statusCode: statusCode || '',
+        requestId: requestId || '',
+        suggestion: suggestion || '检查登录态、租户和参数后重试。',
+      });
+    };
+    const presentError = (err, fallbackTitle = '操作失败', suggestion) => {
+      if (err === 'cancel') return;
+      if (err && err.__uiHandled) return;
+      showErrorDialog({
+        title: fallbackTitle,
+        message: (err && err.message) || fallbackTitle,
+        detail: err ? JSON.stringify({ message: err.message || String(err) }, null, 2) : '',
+        suggestion,
+      });
+    };
+    const resetListFilters = () => {
+      state.filterStatus = '';
+      state.keyword = '';
+      state.resourcePager.page = 1;
+      Object.assign(state.listFilters, { source: '', modelType: '', datasetType: '', trainScene: '', trainMethod: '', label: '', isSystem: '' });
+      loadResources();
+    };
+    const queryResources = () => {
+      state.resourcePager.page = 1;
+      loadResources();
+    };
+    const handleResourcePageChange = (page) => {
+      state.resourcePager.page = page;
+      loadResources();
+    };
+    const handleResourcePageSizeChange = (pageSize) => {
+      state.resourcePager.pageSize = pageSize;
+      state.resourcePager.page = 1;
+      loadResources();
+    };
+    const handleDetailPageChange = (page) => { state.detailFilters.page = page; };
+    const handleDetailPageSizeChange = (pageSize) => {
+      state.detailFilters.pageSize = pageSize;
+      state.detailFilters.page = 1;
+    };
+    const detailRowIndex = (index) => ((state.detailFilters.page - 1) * state.detailFilters.pageSize) + index + 1;
+
+    const buildHeaders = ({ useAuth = true, contentType, extraHeadersText = '{}' } = {}) => {
+      const h = safeJsonParse(extraHeadersText, {});
+      if (useAuth && state.token) { h.Authorization = `Bearer ${state.token}`; h['X-Tenant-ID'] = state.activeTenant; }
+      h['X-Storage-URL-Mode'] = state.urlMode;
+      if (state.urlMode === 'public') h['X-Via-Proxy'] = '1';
+      if (contentType) h['Content-Type'] = contentType;
+      return h;
+    };
+    const buildInternalHeaders = async (method, path) => {
+      if (!state.internal.secretKey) throw new Error('请先填写 SecretKey');
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const nonce = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 8);
+      const signStr = method.toUpperCase() + path + timestamp + nonce;
+      const signature = CryptoJS.HmacSHA256(signStr, state.internal.secretKey).toString(CryptoJS.enc.Hex);
+      return { 'X-Internal-Call': 'true', 'X-Internal-Signature': signature, 'X-Internal-Timestamp': timestamp, 'X-Internal-Nonce': nonce };
+    };
+
+    const apiRequest = async ({ path, method = 'GET', data, params, useAuth = true, extraHeadersText = '{}', extraHeaders }) => {
+      const t0 = Date.now();
+      const baseH = buildHeaders({ useAuth, contentType: data !== undefined ? 'application/json' : undefined, extraHeadersText });
+      const headers = Object.assign(baseH, extraHeaders || {});
+      const snap = { method, url: `${state.apiBase}${path}`, params: params || null, data: data ?? null, headers: maskHeaders(headers) };
+      addLog(`[REQ] ${method} ${path}`);
+      if (params) addLog(`params => ${JSON.stringify(params)}`);
+      if (data !== undefined) addLog(`body => ${JSON.stringify(data)}`);
+      try {
+        const resp = await axios({ baseURL: state.apiBase, url: path, method, data, params, headers });
+        const cost = Date.now() - t0;
+        state.requestTrace = `${method} ${path}\n\n${JSON.stringify(snap, null, 2)}\n\nRESPONSE (${cost}ms)\n${JSON.stringify(resp.data, null, 2)}`;
+        if (resp.data.code !== 0) throw new Error(resp.data.message || '接口调用失败');
+        addLog(`[OK] ${method} ${path} code=0 (${cost}ms)`);
+        return resp.data.data;
+      } catch (err) {
+        const cost = Date.now() - t0;
+        const ep = (err && err.response && err.response.data) ? err.response.data : { message: err.message || '请求失败' };
+        state.requestTrace = `${method} ${path} FAILED\n\n${JSON.stringify(snap, null, 2)}\n\nERROR (${cost}ms)\n${JSON.stringify(ep, null, 2)}`;
+        addLog(`[ERR] ${method} ${path} -> ${ep.message || err.message} (${cost}ms)`);
+        err.__uiHandled = true;
+        // 401/403：服务端拒绝当前 token，多半是过期或被吊销，
+        // 立刻清掉本地登录缓存并复位 token，避免无限携带无效凭证发请求。
+        const httpStatus = (err.response && err.response.status) || 0;
+        if (useAuth && (httpStatus === 401 || httpStatus === 403)) {
+          if (state.token) {
+            addLog(`登录态失效（HTTP ${httpStatus}），已清除本地缓存，请重新登录`);
+            logout({ silent: true });
+          }
+        }
+        showErrorDialog({
+          title: `${method} ${path} 请求失败`,
+          message: ep.message || err.message || '请求失败',
+          detail: JSON.stringify({ request: snap, response: ep }, null, 2),
+          path,
+          statusCode: httpStatus || '',
+          requestId: (err.response && err.response.headers && (err.response.headers['x-request-id'] || err.response.headers['x-trace-id'])) || ep.request_id || '',
+          suggestion: (httpStatus === 401 || httpStatus === 403)
+            ? '登录态失效或权限不足，请在左侧重新登录后再试。'
+            : '请检查筛选条件、登录态、租户头和服务端日志后再重试。',
+        });
+        throw err;
+      }
+    };
+
+    const login = async () => {
+      state.loggingIn = true;
+      try {
+        let resp;
+        if (state.loginMode === 'main') {
+          resp = await axios.post(`${state.apiBase}/api/v1/login`, { phone: state.mainPhone, password: state.mainPassword });
+        } else {
+          resp = await axios.post(`${state.apiBase}/api/v1/sub-accounts/login`, { username: state.subUsername, password: state.subPassword, tid: state.activeTenant });
+        }
+        if (resp.data.code !== 0) throw new Error(resp.data.message || '登录失败');
+        const d = resp.data.data || {};
+        state.token = d.token || '';
+        state.currentUser = state.loginMode === 'main' ? (d.username || d.user_id || 'main-user') : ((d.sub_account && d.sub_account.username) || 'sub-user');
+        if (state.loginMode === 'main' && d.tenants && d.tenants.length) {
+          state.tenantOptions = d.tenants.map(t => ({
+            value: t.id || t.encoded_id || t,
+            label: t.name ? `${t.name}（${t.id || t.encoded_id || t}）` : String(t.id || t.encoded_id || t),
+          }));
+          if (!state.activeTenant || !state.tenantOptions.find(o => o.value === state.activeTenant)) {
+            state.activeTenant = state.tenantOptions[0].value;
+          }
+        }
+        ElMessage.success('登录成功');
+        addLog(`登录成功：${state.currentUser} / tenant=${state.activeTenant}`);
+        // 登录成功后落盘，下次打开页面可直接复用 token / 租户信息。
+        persistAuthSession();
+        await refreshAll();
+        await restoreUploadSession();
+      } catch (err) {
+        showErrorDialog({
+          title: '登录失败',
+          message: (err.response && err.response.data && err.response.data.message) || err.message || '登录失败',
+          detail: JSON.stringify((err.response && err.response.data) || { message: err.message || '登录失败' }, null, 2),
+          path: state.loginMode === 'main' ? '/api/v1/login' : '/api/v1/sub-accounts/login',
+          statusCode: (err.response && err.response.status) || '',
+          requestId: (err.response && err.response.headers && (err.response.headers['x-request-id'] || err.response.headers['x-trace-id'])) || '',
+          suggestion: '确认账号、密码、租户和服务地址后再重试。',
+        });
+        addLog(`登录失败：${err.message}`);
+      } finally { state.loggingIn = false; }
+    };
+
+    const loadQuota = async () => {
+      if (!ensureAuth()) return; state.loadingQuota = true;
+      try { const d = await apiRequest({ path: '/api/v2/storage/quota' }); state.quota = d || {}; addLog(`配额：${formatGB(state.quota.used_total||0)} / ${formatGB(state.quota.total_quota||0)}`); }
+      finally { state.loadingQuota = false; }
+    };
+    const loadTokens = async () => {
+      if (!ensureAuth()) return;
+      const d = await apiRequest({ path: '/api/v2/auth/tokens' });
+      state.tokens = Array.isArray(d) ? d : [];
+      addLog(`PAT 列表：${state.tokens.length} 个`);
+    };
+    const loadResources = async () => {
+      if (!ensureAuth()) return; state.loadingResources = true;
+      try {
+        const path = state.listType === 'model' ? '/api/v2/storage/models' : '/api/v2/storage/datasets';
+        const d = await apiRequest({ path, params: {
+          page: state.resourcePager.page,
+          pageSize: state.resourcePager.pageSize,
+          keyword: state.keyword || undefined,
+          status: state.filterStatus || undefined,
+          source: state.listFilters.source || undefined,
+          label: state.listFilters.label || undefined,
+          modelType: state.listType === 'model' ? (state.listFilters.modelType || undefined) : undefined,
+          datasetType: state.listType === 'dataset' ? (state.listFilters.datasetType || undefined) : undefined,
+          trainScene: state.listType === 'dataset' ? (state.listFilters.trainScene || undefined) : undefined,
+          trainMethod: state.listType === 'dataset' ? (state.listFilters.trainMethod || undefined) : undefined,
+          isSystem: state.listType === 'model' && state.listFilters.isSystem !== '' && state.listFilters.isSystem !== null && state.listFilters.isSystem !== undefined ? state.listFilters.isSystem : undefined,
+          orderBy: 'updatedAt',
+          orderDesc: true,
+        } });
+        state.resources = ((d && d.items) || []).map(normalizeResourceItem);
+        state.resourcePager.total = Number((d && d.total) || 0);
+        state.resourcePager.page = Number((d && d.page) || state.resourcePager.page || 1);
+        state.resourcePager.pageSize = Number((d && d.page_size) || state.resourcePager.pageSize || 20);
+        addLog(`列表 ${state.listType}：${d && d.total || state.resources.length} 条`);
+      } catch (err) { presentError(err, '列表查询失败', '请调整筛选条件或稍后重试。'); }
+      finally { state.loadingResources = false; }
+    };
+    const refreshAll = async () => { if (!ensureAuth()) return; try { await Promise.all([loadQuota(), loadResources(), loadTokens()]); } catch {} };
+
+    const onFileChange = (e) => {
+      state.form.file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+      if (state.form.file && !state.form.name) state.form.name = state.form.file.name.replace(/\.[^.]+$/, '');
+      if (state.form.file) {
+        addLog(`选择文件：${state.form.file.name} (${formatBytes(state.form.file.size)})`);
+        if (isSameResumeFile(state.form.file)) {
+          addLog(`检测到可续传文件：${state.form.file.name}，可点击“继续续传”恢复 ${state.resumeSession.uploadId}`);
+        }
+      }
+    };
+    const onFolderChange = async (e) => {
+      const files = Array.from((e.target && e.target.files) || []);
+      if (!files.length) return;
+      const fn = (files[0].webkitRelativePath || files[0].name || 'folder').split('/')[0].replace(/\.[^.]+$/, '') || 'folder';
+      // 不管模型还是数据集，均直接存储文件列表，逐个直传，不打包
+      state.form.files = files;
+      state.form.file = null;
+      if (!state.form.name) state.form.name = fn;
+      const totalSize = files.reduce((s, f) => s + f.size, 0);
+      addLog(`选择文件夹 ${fn}（${state.form.resourceType}）：${files.length} 个文件（${formatBytes(totalSize)}），将逐个直传`);
+      ElMessage.success(`已选择 ${files.length} 个文件，点击"开始上传"开始上传`);
+    };
+    // 滑动窗口并发工作池：始终保持 concurrency 个任务并行，
+    // 任何一个完成立即补充新任务，避免批次末尾"等最慢那片"的空窗期。
+    const runPool = (items, concurrency, fn) => {
+      let idx = 0;
+      const worker = () => idx < items.length ? fn(items[idx++]).then(worker) : Promise.resolve();
+      return Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+    };
+    const uploadChunk = (url, blob, onProgress) => new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url);
+      if (onProgress) {
+        let prevLoaded = 0;
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && e.loaded > prevLoaded) {
+            onProgress(e.loaded - prevLoaded);
+            prevLoaded = e.loaded;
+          }
+        };
+      }
+      xhr.onload = () => { if (xhr.status === 200 || xhr.status === 204) resolve((xhr.getResponseHeader('ETag') || '').replace(/"/g, '')); else reject(new Error(`S3 PUT 失败: HTTP ${xhr.status}`)); };
+      xhr.onerror = () => reject(new Error('S3 PUT 网络异常'));
+      xhr.send(blob);
+    });
+    const pollUpload = async (uploadId, options = {}) => {
+      if (!uploadId || !ensureAuth()) return;
+      clearTimeout(state.pollTimer);
+      try {
+        const includeParts = !!options.includeParts;
+        const d = await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/status${includeParts ? '?include_parts=1' : ''}` });
+        state.upload.status = d.status || state.upload.status;
+        if (typeof d.resource_status === 'string') state.upload.resourceStatus = d.resource_status;
+        state.upload.progress = Number(d.progress || 0);
+        state.upload.resourceId = d.resource_id || state.upload.resourceId;
+        state.upload.errorMsg = d.error_msg || '';
+        state.upload.uploadId = d.upload_id || state.upload.uploadId;
+        state.upload.totalParts = d.total_parts || state.upload.totalParts;
+        state.upload.currentFileName = d.filename || state.upload.currentFileName;
+        if (Number.isFinite(d.total_size)) {
+          const totalSize = Number(d.total_size || 0);
+          state.upload.currentFileSize = totalSize || state.upload.currentFileSize;
+          if (!state.upload.totalBytes || Number(state.upload.totalFiles || 0) <= 1) {
+            state.upload.totalBytes = totalSize || state.upload.totalBytes;
+          }
+        }
+        if (Array.isArray(d.uploaded_part_numbers)) {
+          state.upload.uploadedPartNumbers = d.uploaded_part_numbers;
+        } else if (options.refreshPartNumbers) {
+          state.upload.uploadedPartNumbers = [];
+        }
+        state.upload.uploadedCount = Number.isFinite(d.uploaded_parts_count)
+          ? d.uploaded_parts_count
+          : (Array.isArray(d.uploaded_part_numbers)
+            ? d.uploaded_part_numbers.length
+            : state.upload.uploadedCount);
+        persistUploadSession();
+        addLog(`轮询：${state.upload.status} ${state.upload.progress}%`);
+        if (['init','uploading','extracting','completing'].includes(state.upload.status)) {
+          state.pollTimer = setTimeout(() => pollUpload(uploadId), 2000);
+        } else if (state.upload.status === 'available') {
+          clearUploadSession();
+          ElMessage.success('资源已就绪！'); await refreshAll();
+        } else if (state.upload.status === 'failed') {
+          presentError(new Error(state.upload.errorMsg || '上传失败'), '上传失败', '请检查上传任务状态和服务端处理日志。');
+        }
+      } catch (err) { addLog(`轮询失败：${err.message}`); }
+    };
+    const setPausedUploadState = (err, suggestion) => {
+      state.upload.status = state.upload.uploadId ? 'paused' : 'failed';
+      state.upload.errorMsg = (err && err.response && err.response.data && err.response.data.message) || err.message || '上传失败';
+      persistUploadSession();
+      presentError(err, state.upload.status === 'paused' ? '上传已暂停' : '上传失败', suggestion);
+      addLog(`${state.upload.status === 'paused' ? '上传已暂停' : '上传失败'}：${state.upload.errorMsg}`);
+    };
+    const prepareSingleUploadState = (file) => {
+      state.upload.working = true;
+      state.upload.progress = 0;
+      state.upload.status = state.upload.uploadId ? state.upload.status : 'init';
+      state.upload.resourceStatus = '';
+      state.upload.errorMsg = '';
+      state.upload.speed = '';
+      state.upload.eta = '';
+      state.upload._startTime = Date.now();
+      state.upload._sentBytes = 0;
+      Object.assign(state.upload, {
+        totalFiles: 1, doneFiles: 0, currentFileIdx: 1,
+        uploadedPartNumbers: [],
+        currentFileName: file.name, currentFileSize: file.size, currentFilePct: 0,
+        totalBytes: file.size, sentBytes: 0,
+      });
+    };
+    const refreshSingleUploadProgress = (fileSize, forceComplete = false) => {
+      const safeSize = Math.max(Number(fileSize || 0), 1);
+      const pct = forceComplete ? 100 : Math.min(99, Math.round(state.upload._sentBytes / safeSize * 100));
+      state.upload.sentBytes = state.upload._sentBytes;
+      state.upload.currentFilePct = pct;
+      state.upload.progress = forceComplete ? 100 : Math.min(99, Number(((state.upload._sentBytes / safeSize) * 100).toFixed(1)));
+      const elapsed = (Date.now() - state.upload._startTime) / 1000;
+      const speed = elapsed > 0.5 ? state.upload._sentBytes / elapsed : 0;
+      state.upload.speed = forceComplete ? '' : fmtSpeed(speed);
+      state.upload.eta = forceComplete ? '' : fmtETA(safeSize - state.upload._sentBytes, speed);
+    };
+    const uploadSinglePartWithRetry = async ({ uploadId, partNumber, blob, fileSize }) => {
+      let lastErr = null;
+      for (let attempt = 1; attempt <= MAX_PART_UPLOAD_ATTEMPTS; attempt++) {
+        let attemptSent = 0;
+        let lastUIUpdate = 0;
+        try {
+          if (attempt > 1) {
+            addLog(`分片 ${partNumber} 第 ${attempt} 次尝试：重新获取上传 URL`);
+          }
+          const [partInfo] = await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/part-url`, method: 'POST', data: { part_numbers: [partNumber] } });
+          const etag = await uploadChunk(partInfo.url, blob, (delta) => {
+            attemptSent += delta;
+            state.upload._sentBytes += delta;
+            const now = Date.now();
+            if (now - lastUIUpdate >= 120) {
+              lastUIUpdate = now;
+              refreshSingleUploadProgress(fileSize);
+            }
+          });
+          const reportData = await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/part`, method: 'POST', data: { part_number: partNumber, etag, part_size: blob.size } });
+          refreshSingleUploadProgress(fileSize);
+          return reportData;
+        } catch (err) {
+          lastErr = err;
+          if (attemptSent > 0) {
+            state.upload._sentBytes = Math.max(0, state.upload._sentBytes - attemptSent);
+            refreshSingleUploadProgress(fileSize);
+          }
+          const reason = (err && err.message) || '上传失败';
+          if (attempt >= MAX_PART_UPLOAD_ATTEMPTS) break;
+          addLog(`分片 ${partNumber} 上传失败（第 ${attempt} 次）：${reason}，将重试`);
+        }
+      }
+      throw lastErr || new Error(`分片 ${partNumber} 上传失败`);
+    };
+    const runSingleFileUpload = async ({ file, resourceId, isResume }) => {
+      prepareSingleUploadState(file);
+      resetUploadHints(state.upload, state.form.concurrency);
+      try {
+        const chunkSize = Math.max(5 * 1024 * 1024, Number(state.form.chunkSizeMB || 50) * 1024 * 1024);
+        const concurrency = Math.max(1, Math.min(16, Number(state.form.concurrency || 4)));
+        const currentUploadId = state.upload.uploadId;
+        if (!resourceId) {
+          resourceId = await createRepo(state.form.resourceType, state.form.name);
+        } else if (isResume) {
+          addLog(`继续续传：upload_id=${currentUploadId || state.resumeSession.uploadId} resource_id=${resourceId}`);
+        }
+
+        if (currentUploadId) {
+          try {
+            const currentStatus = await apiRequest({ path: `/api/v2/storage/upload/${currentUploadId}/status?include_parts=1` });
+            state.upload.resourceId = currentStatus.resource_id || resourceId;
+            state.upload.uploadId = currentStatus.upload_id || currentUploadId;
+            state.upload.status = currentStatus.status || state.upload.status;
+            state.upload.resourceStatus = currentStatus.resource_status || state.upload.resourceStatus;
+            state.upload.currentFileName = currentStatus.filename || file.name;
+            state.upload.currentFileSize = Number(currentStatus.total_size || file.size);
+            state.upload.totalBytes = Number(currentStatus.total_size || file.size);
+            state.upload.uploadedCount = Number(currentStatus.uploaded_parts_count || 0);
+            state.upload.uploadedPartNumbers = Array.isArray(currentStatus.uploaded_part_numbers) ? currentStatus.uploaded_part_numbers : [];
+            persistUploadSession();
+            if (currentStatus.status === 'available') {
+              clearUploadSession();
+              state.upload.status = 'available';
+              state.upload.resourceStatus = currentStatus.resource_status || 'available';
+              state.upload.progress = 100;
+              ElMessage.success('资源已就绪！');
+              await refreshAll();
+              return;
+            }
+            if (['extracting', 'completing'].includes(currentStatus.status)) {
+              addLog(`任务已进入 ${currentStatus.status}，继续等待服务端处理`);
+              await pollUpload(state.upload.uploadId);
+              return;
+            }
+          } catch (err) {
+            addLog(`恢复现场查询失败，将直接向服务端协商续传：${err.message || err}`);
+          }
+        }
+
+        addLog(`${isResume ? '协商续传' : '初始化上传'}：${file.name}，分片 ${state.form.chunkSizeMB} MB，并发 ${concurrency}`);
+        const initData = await apiRequest({ path: '/api/v2/storage/upload/init', method: 'POST', data: { resource_id: resourceId, filename: file.name, file_size: file.size, chunk_size: chunkSize, content_type: file.type || 'application/octet-stream' } });
+        applyUploadHints(state.upload, initData, concurrency);
+        state.upload.uploadId = initData.upload_id;
+        state.upload.resourceId = initData.resource_id;
+        state.upload.totalParts = initData.total_parts || 0;
+        const realChunk = initData.chunk_size || chunkSize;
+        const uploadedSet = new Set(initData.already_uploaded_parts || []);
+        state.upload.uploadedPartNumbers = Array.from(uploadedSet).sort((a, b) => a - b);
+        state.upload.uploadedCount = uploadedSet.size;
+        persistUploadSession();
+        addLog(`upload_id=${state.upload.uploadId}，总片数=${state.upload.totalParts}，已上传=${state.upload.uploadedCount}`);
+        if (initData.is_resume && uploadedSet.size > 0) {
+          addLog(`⚡ 断点续传：已完成 ${uploadedSet.size}/${state.upload.totalParts} 片，跳过重传`);
+        }
+
+        const pendingParts = [];
+        for (let p = 1; p <= (initData.total_parts || 0); p++) { if (!uploadedSet.has(p)) pendingParts.push(p); }
+        await runPool(pendingParts, concurrency, async (pn) => {
+          const start = (pn - 1) * realChunk;
+          const end = Math.min(start + realChunk, file.size);
+          const blob = file.slice(start, end);
+          const reportData = await uploadSinglePartWithRetry({ uploadId: state.upload.uploadId, partNumber: pn, blob, fileSize: file.size });
+          state.upload.uploadedCount = reportData.uploaded_count || (state.upload.uploadedCount + 1);
+          if (!state.upload.uploadedPartNumbers.includes(pn)) {
+            state.upload.uploadedPartNumbers = [...state.upload.uploadedPartNumbers, pn].sort((a, b) => a - b);
+          }
+          persistUploadSession();
+          refreshSingleUploadProgress(file.size);
+          state.upload.status = 'uploading';
+        });
+
+        addLog('所有分片完成，开始合并');
+        const completeData = await apiRequest({ path: `/api/v2/storage/upload/${state.upload.uploadId}/complete`, method: 'POST', data: {} });
+        state.upload.status = completeData.status || 'processing';
+        state.upload.resourceStatus = state.upload.status === 'extracting' ? 'uploading' : state.upload.resourceStatus;
+        state.upload.doneFiles = 1;
+        refreshSingleUploadProgress(file.size, true);
+        addLog(`complete 成功，状态=${state.upload.status}`);
+        await pollUpload(state.upload.uploadId);
+      } catch (err) {
+        setPausedUploadState(err, '服务恢复后重新选择同一个文件，然后点击“继续续传”；服务端会返回已完成分片，前端只补传剩余部分。');
+      } finally {
+        state.upload.working = false;
+      }
+    };
+    const resumeUpload = async () => {
+      if (!ensureAuth()) return;
+      const saved = syncResumeSession(loadSavedUploadSession());
+      if (!saved || !state.resumeSession.uploadId) {
+        ElMessage.warning('未找到可恢复的上传会话');
+        return;
+      }
+      if (!state.resumeSession.canResume) {
+        ElMessage.warning('当前仅支持单文件上传的断点续传；文件夹直传请重新发起');
+        return;
+      }
+      hydrateFormFromResumeSession();
+      if (!state.form.file) {
+        ElMessage.warning('请先重新选择同一个文件，再点击继续续传');
+        return;
+      }
+      if (!isSameResumeFile(state.form.file)) {
+        ElMessage.error(`请选择同一个文件继续续传：${state.resumeSession.filename}（${formatBytes(state.resumeSession.fileSize)}）`);
+        return;
+      }
+      Object.assign(state.upload, {
+        uploadId: state.resumeSession.uploadId,
+        resourceId: state.resumeSession.resourceId,
+        status: 'paused',
+        resourceStatus: '',
+        currentFileName: state.resumeSession.filename,
+        currentFileSize: state.resumeSession.fileSize,
+        totalBytes: state.resumeSession.fileSize,
+      });
+      await runSingleFileUpload({ file: state.form.file, resourceId: state.resumeSession.resourceId, isResume: true });
+    };
+    const inspectResumeUpload = async () => {
+      if (!ensureAuth()) return;
+      const uploadId = state.resumeSession.uploadId || state.manualUploadId || state.upload.uploadId;
+      if (!uploadId) {
+        ElMessage.warning('没有可查询的 upload_id');
+        return;
+      }
+      state.manualUploadId = uploadId;
+      await pollUpload(uploadId, { includeParts: true, refreshPartNumbers: true });
+    };
+    const clearSavedResumeSession = () => {
+      clearUploadSession();
+      addLog('已清除本地续传会话');
+      ElMessage.success('本地续传会话已清除');
+    };
+    const cancelCurrentUpload = async () => {
+      if (!ensureAuth() || !state.upload.uploadId) { ElMessage.warning('无可取消的上传任务'); return; }
+      try {
+        await apiRequest({ path: `/api/v2/storage/upload/${state.upload.uploadId}`, method: 'DELETE' });
+        state.upload.status = 'cancelled'; state.upload.resourceStatus = ''; state.upload.working = false;
+        clearUploadSession();
+        addLog(`已取消：${state.upload.uploadId}`); ElMessage.success('已取消');
+      } catch (err) { presentError(err, '取消上传失败'); }
+    };
+    const resetUploadForm = () => {
+      state.form.file = null; state.form.files = []; state.form.name = '';
+      clearUploadSession();
+      state.upload = { working: false, uploadId: '', resourceId: '', status: 'idle', resourceStatus: '', progress: 0,
+        uploadedCount: 0, totalParts: 0, errorMsg: '', speed: '', eta: '',
+        recommendedConcurrency: 0, maxPartURLBatch: 0, effectiveConcurrency: 4, effectivePartURLBatch: 20,
+        uploadedPartNumbers: [],
+        _startTime: 0, _sentBytes: 0,
+        totalFiles: 0, doneFiles: 0, currentFileIdx: 0,
+        currentFileName: '', currentFileSize: 0, currentFilePct: 0,
+        totalBytes: 0, sentBytes: 0,
+      };
+    };
+    // 等待服务端处理完成（ZIP 解压），最多等 4 分钟
+    // 注意：普通文件在 complete 后资源即为 available，无需进入此函数
+    const waitForAvailable = async (uploadId, options = {}) => {
+      const label = options.label || uploadId;
+      for (let i = 0; i < 120; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const d = await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/status` });
+        if (state.upload.uploadId === uploadId) {
+          state.upload.status = d.status || state.upload.status;
+          state.upload.resourceStatus = d.resource_status || state.upload.resourceStatus;
+        }
+        addLog(`轮询 ${label}: task=${d.status} repo=${d.resource_status || '-'} ${d.progress || 0}%`);
+        if (d.status === 'available' || d.resource_status === 'available') return d;
+        if (d.status === 'failed' || d.resource_status === 'failed') throw new Error(d.error_msg || '上传处理失败');
+        if (d.status === 'cancelled') throw new Error('上传已取消');
+        // 继续等待：extracting/completing/uploading
+      }
+      throw new Error('等待超时（超过240秒）');
+    };
+    // 文件夹直传：每个文件独立走完整上传流程，各自成为独立资源（模型/数据集均适用）
+    // createRepo 创建空资源仓库，返回 resource_id（仓库创建即 available，无需等待）
+    const createRepo = async (resourceType, name) => {
+      const body = { name, description: state.form.description,
+        labels: state.form.labels.split(',').map(s => s.trim()).filter(Boolean),
+        source: 'upload',
+        visibility: 0 };
+      if (resourceType === 'model') body.model_type = state.form.modelType;
+      else { body.dataset_type = state.form.datasetType; body.train_scene = state.form.trainScene; }
+      const path = resourceType === 'model' ? '/api/v2/storage/models' : '/api/v2/storage/datasets';
+      const resp = await apiRequest({ path, method: 'POST', data: body });
+      addLog(`仓库已创建: resource_id=${resp.resource_id} name=${resp.name}`);
+      return resp.resource_id;
+    };
+
+    const startMultiFileUpload = async (files, options = {}) => {
+      // 跳过 0 字节文件，防止服务端 FileSize required 校验失败
+      const validFiles = files.filter(f => {
+        if (f.size === 0) { addLog(`⚠ 跳过空文件: ${f.name}`); return false; }
+        return true;
+      });
+      if (!validFiles.length) { ElMessage.warning('所有文件均为空文件（0 字节），取消上传'); return; }
+      const totalBytes = validFiles.reduce((s, f) => s + f.size, 0);
+      Object.assign(state.upload, {
+        working: true, progress: 0, status: 'uploading', errorMsg: '', speed: '', eta: '',
+        uploadedPartNumbers: [],
+        _startTime: Date.now(), _sentBytes: 0,
+        totalFiles: validFiles.length, doneFiles: 0, currentFileIdx: 0,
+        currentFileName: '', currentFileSize: 0, currentFilePct: 0,
+        totalBytes, sentBytes: 0,
+      });
+      resetUploadHints(state.upload, state.form.concurrency);
+      const chunkSize = Math.max(5 * 1024 * 1024, Number(state.form.chunkSizeMB || 50) * 1024 * 1024);
+      const concurrency = Math.max(1, Math.min(16, Number(state.form.concurrency || 4)));
+      let globalSent = 0; // bytes sent across ALL files (for speed/ETA)
+      const existingResourceID = options.resourceId || '';
+      const resumeFolderMode = !!options.isResume;
+      try {
+        // 文件夹续传时复用原 resource_id；正常首次上传时创建新仓库。
+        const sharedResourceID = existingResourceID || await createRepo(state.form.resourceType, state.form.name);
+        if (resumeFolderMode) {
+          addLog(`继续文件夹续传：resource_id=${sharedResourceID}，已完成文件将自动跳过`);
+        }
+        for (let fi = 0; fi < validFiles.length; fi++) {
+          const file = validFiles[fi];
+          state.upload.currentFileIdx = fi + 1;
+          state.upload.currentFileSize = file.size;
+          state.upload.currentFilePct = 0;
+          const effChunk = Math.max(5 * 1024 * 1024, Math.min(chunkSize, Math.ceil(file.size / 100)));
+          // 提取相对路径，去掉顶层文件夹名前缀（如 "MyModel/weights/a.bin" → "weights/a.bin"）
+          const rawRel = file.webkitRelativePath || file.name;
+          const slashIdx = rawRel.indexOf('/');
+          const relFilename = slashIdx >= 0 ? rawRel.slice(slashIdx + 1) : rawRel;
+          state.upload.currentFileName = relFilename; // 声明后再赋值，避免 TDZ
+          state.upload.resourceId = sharedResourceID;
+          addLog(`[${fi+1}/${validFiles.length}] 初始化: ${relFilename} (${formatBytes(file.size)})`);
+          const initPayload = { resource_id: sharedResourceID, filename: relFilename, file_size: file.size,
+            chunk_size: effChunk, content_type: file.type || 'application/octet-stream' };
+          let initData;
+          try {
+            initData = await apiRequest({ path: '/api/v2/storage/upload/init', method: 'POST', data: initPayload });
+          } catch (err) {
+            if (resumeFolderMode && isFileAlreadyExistsError(err)) {
+              globalSent += file.size;
+              state.upload.sentBytes = globalSent;
+              state.upload.doneFiles = fi + 1;
+              state.upload.currentFilePct = 100;
+              state.upload.progress = Math.min(100, Number(((globalSent / totalBytes) * 100).toFixed(1)));
+              addLog(`[${fi+1}/${validFiles.length}] 已存在，自动跳过: ${relFilename}`);
+              continue;
+            }
+            throw err;
+          }
+          applyUploadHints(state.upload, initData, concurrency);
+          state.upload.uploadId = initData.upload_id;
+          state.upload.resourceId = initData.resource_id;
+          state.upload.totalParts = initData.total_parts || 0;
+          const realChunk = initData.chunk_size || effChunk;
+          const uploadedSet = new Set(initData.already_uploaded_parts || []);
+          state.upload.uploadedPartNumbers = Array.from(uploadedSet).sort((a, b) => a - b);
+          state.upload.uploadedCount = uploadedSet.size;
+          persistUploadSession();
+          // 断点续传检测
+          if (initData.is_resume && uploadedSet.size > 0) {
+            addLog(`⚡ [${fi+1}/${validFiles.length}] 断点续传：已完成 ${uploadedSet.size}/${initData.total_parts} 片，跳过重传`);
+            globalSent += file.size * (uploadedSet.size / Math.max(1, initData.total_parts));
+            state.upload.sentBytes = Math.min(globalSent, totalBytes);
+            state.upload.progress = Math.min(99, Number(((state.upload.sentBytes / totalBytes) * 100).toFixed(1)));
+          }
+          let fileSent = 0;
+          const pendingParts = [];
+          for (let p = 1; p <= (initData.total_parts || 0); p++) { if (!uploadedSet.has(p)) pendingParts.push(p); }
+          // 流水线模式：每个并发槽独立申请 URL + 上传 + 上报，无批次停顿
+          await runPool(pendingParts, concurrency, async (pn) => {
+            const [partInfo] = await apiRequest({ path: `/api/v2/storage/upload/${state.upload.uploadId}/part-url`,
+              method: 'POST', data: { part_numbers: [pn] } });
+            const s0 = (pn - 1) * realChunk;
+            const blob = file.slice(s0, Math.min(s0 + realChunk, file.size));
+            let lastUIUpdate = 0;
+            const etag = await uploadChunk(partInfo.url, blob, (delta) => {
+              fileSent += delta; globalSent += delta;
+              state.upload.sentBytes = globalSent;
+              const now = Date.now();
+              if (now - lastUIUpdate >= 120) {
+                lastUIUpdate = now;
+                const elapsed = (now - state.upload._startTime) / 1000;
+                const speed = elapsed > 0.5 ? globalSent / elapsed : 0;
+                state.upload.speed = fmtSpeed(speed);
+                state.upload.eta = fmtETA(totalBytes - globalSent, speed);
+                state.upload.currentFilePct = Math.min(99, Math.round(fileSent / file.size * 100));
+                state.upload.progress = Math.min(99, Number(((globalSent / totalBytes) * 100).toFixed(1)));
+              }
+            });
+            const rep = await apiRequest({ path: `/api/v2/storage/upload/${state.upload.uploadId}/part`,
+              method: 'POST', data: { part_number: pn, etag, part_size: blob.size } });
+            state.upload.uploadedCount = rep.uploaded_count || (state.upload.uploadedCount + 1);
+            if (!state.upload.uploadedPartNumbers.includes(pn)) {
+              state.upload.uploadedPartNumbers = [...state.upload.uploadedPartNumbers, pn].sort((a, b) => a - b);
+            }
+            persistUploadSession();
+            state.upload.currentFilePct = Math.min(99, Math.round(fileSent / file.size * 100));
+            state.upload.progress = Math.min(99, Number(((globalSent / totalBytes) * 100).toFixed(1)));
+          });
+          const completeData = await apiRequest({ path: `/api/v2/storage/upload/${state.upload.uploadId}/complete`, method: 'POST', data: {} });
+          state.upload.status = completeData.status || state.upload.status;
+          addLog(`[${fi+1}/${validFiles.length}] complete: resource_id=${state.upload.resourceId} status=${completeData.status}`);
+          if (isAsyncUploadStatus(completeData.status)) {
+            addLog(`[${fi+1}/${validFiles.length}] 服务端处理中（${completeData.status}），等待最终状态...`);
+            await waitForAvailable(state.upload.uploadId, { label: relFilename });
+          } else if (completeData.status !== 'available') {
+            throw new Error(`资源状态异常: ${completeData.status}`);
+          }
+          state.upload.doneFiles = fi + 1;
+          state.upload.currentFilePct = 100;
+        }
+        state.upload.progress = 100; state.upload.status = 'available';
+        state.upload.speed = ''; state.upload.eta = '';
+        state.upload.currentFileName = '';
+        clearUploadSession();
+        ElMessage.success(`全部 ${validFiles.length} 个文件上传完成（1 个仓库: ${sharedResourceID}）！`);
+        await refreshAll();
+      } catch (err) {
+        state.upload.status = state.upload.uploadId ? 'paused' : 'failed';
+        state.upload.errorMsg = err.message || '上传失败';
+        persistUploadSession();
+        presentError(err, state.upload.status === 'paused' ? '文件夹上传已暂停' : '上传失败', '恢复后重新选择同一个文件夹，并保持仓库名称不变；点击“继续文件夹续传”，已完成文件会自动跳过。');
+        addLog(`${state.upload.status === 'paused' ? '文件夹上传已暂停' : '上传失败'}：${state.upload.errorMsg}`);
+      } finally { state.upload.working = false; }
+    };
+    const startUpload = async () => {
+      if (!ensureAuth()) return;
+      // 文件夹直传（模型或数据集均支持，不打包）
+      if (state.form.files && state.form.files.length > 0) {
+        if (!state.form.name) { ElMessage.warning('请先填写资源名称（文件夹将以此命名）'); return; }
+        const folderResume = state.resumeSession.mode === 'folder' && resumeFolderReady.value;
+        return startMultiFileUpload(state.form.files, { resourceId: folderResume ? state.resumeSession.resourceId : '', isResume: folderResume });
+      }
+      if (!state.form.file) { ElMessage.warning('请先选择文件'); return; }
+      if (!state.form.name) { ElMessage.warning('请填写资源名称'); return; }
+      const file = state.form.file;
+      Object.assign(state.upload, { uploadId: '', resourceId: '', status: 'idle', resourceStatus: '' });
+      await runSingleFileUpload({ file, resourceId: '', isResume: false });
+    };
+
+    const showDetail = async (row) => {
+      if (!ensureAuth()) return;
+      try {
+        const type = row.resource_type || state.listType;
+        const path = type === 'model' ? '/api/v2/storage/models' : '/api/v2/storage/datasets';
+        const [detailData, filesData] = await Promise.all([
+          apiRequest({ path: `${path}/${row.resource_id}` }),
+          apiRequest({ path: `/api/v2/storage/resources/${row.resource_id}/files` }),
+        ]);
+        state.detail = normalizeResourceItem({ ...(detailData || {}), resource_type: (detailData && detailData.resource_type) || type });
+        state.detailFiles = Array.isArray(filesData) ? filesData.map(normalizeDetailFile) : [];
+        Object.assign(state.detailFilters, { keyword: '', status: '', sortBy: 'path-asc', page: 1, pageSize: 10, pageSizes: state.detailFilters.pageSizes });
+        state.detailView = 'overview';
+        state.detailVisible = true;
+        addLog(`详情 ${row.resource_id}：文件数=${state.detail.file_count || state.detailFiles.length}`);
+      } catch (err) { presentError(err, '详情查询失败'); }
+    };
+    const openEdit = (row) => {
+      state.editForm = { resourceId: row.resource_id, type: row.resource_type || state.listType, name: row.name || '', description: row.description || '', labels: Array.isArray(row.labels) ? row.labels.join(',') : '' };
+      state.editVisible = true;
+    };
+    const saveEdit = async () => {
+      if (!ensureAuth()) return;
+      try {
+        const path = state.editForm.type === 'model' ? '/api/v2/storage/models' : '/api/v2/storage/datasets';
+        await apiRequest({ path: `${path}/${state.editForm.resourceId}`, method: 'PATCH', data: { name: state.editForm.name, description: state.editForm.description, labels: state.editForm.labels.split(',').map(s => s.trim()).filter(Boolean) } });
+        ElMessage.success('更新成功'); state.editVisible = false; await loadResources();
+      } catch (err) { presentError(err, '更新失败'); }
+    };
+    const loadDownloadUrls = async (row) => {
+      if (!ensureAuth()) return;
+      try {
+        const d = await apiRequest({ path: `/api/v2/storage/resources/${row.resource_id}/download-urls` });
+        const items = (d && d.files) || [];
+        addLog(`批量下载链接：${items.length} 个`);
+        if (items[0] && items[0].url) window.open(items[0].url, '_blank'); else ElMessage.info('无可用下载链接');
+      } catch (err) { presentError(err, '下载链接获取失败'); }
+    };
+    const downloadSingle = async (resourceId, filename) => {
+      if (!ensureAuth()) return;
+      try { const d = await apiRequest({ path: `/api/v2/storage/resources/${resourceId}/download-url`, params: { filename } }); if (d && d.url) window.open(d.url, '_blank'); }
+      catch (err) { presentError(err, '下载失败'); }
+    };
+    const removeResource = async (row) => {
+      if (!ensureAuth()) return;
+      try {
+        await ElMessageBox.confirm(`确认删除 "${row.name}" 吗？删除后不可恢复。`, '确认删除', { type: 'warning' });
+        const path = (row.resource_type || state.listType) === 'model' ? '/api/v2/storage/models' : '/api/v2/storage/datasets';
+        await apiRequest({ path: `${path}/${row.resource_id}`, method: 'DELETE' });
+        ElMessage.success('删除成功'); addLog(`已删除：${row.resource_id}`); await refreshAll();
+      } catch (err) { if (err !== 'cancel') presentError(err, '删除失败'); }
+    };
+
+    const createPAT = async () => {
+      if (!ensureAuth()) return;
+      try {
+        const d = await apiRequest({ path: '/api/v2/auth/tokens', method: 'POST', data: { name: state.tokenForm.name, scopes: state.tokenForm.scopes, expires_in_days: Number(state.tokenForm.expiresInDays || 0) } });
+        state.rawToken = d.token || '';
+        state.patDialogVisible = true;
+        addLog(`PAT 创建：${d.token_id || '-'}`); await loadTokens();
+      } catch (err) { presentError(err, 'PAT 创建失败'); }
+    };
+    const revokePAT = async (row) => {
+      if (!ensureAuth()) return;
+      try {
+        await ElMessageBox.confirm(`确认撤销 PAT "${row.name || row.token_id}" 吗？`, '确认撤销', { type: 'warning' });
+        await apiRequest({ path: `/api/v2/auth/tokens/${row.token_id}`, method: 'DELETE' });
+        ElMessage.success('PAT 已撤销'); addLog(`已撤销 PAT：${row.token_id}`); await loadTokens();
+      } catch (err) { if (err !== 'cancel') presentError(err, 'PAT 撤销失败'); }
+    };
+    const copyToken = async () => {
+      try {
+        if (!state.rawToken) {
+          ElMessage.warning('令牌为空，无法复制');
+          return;
+        }
+        await navigator.clipboard.writeText(state.rawToken);
+        ElMessage.success('已复制到剪贴板！请妥善保管此令牌。');
+        state.patTokenCopied = true;
+      } catch {
+        // fallback: select the text and try execCommand
+        const el = document.querySelector('.pat-token-reveal');
+        if (el) {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          try {
+            document.execCommand('copy');
+            ElMessage.success('已复制到剪贴板！请妥善保管此令牌。');
+            state.patTokenCopied = true;
+            sel.removeAllRanges();
+            return;
+          } catch {}
+        }
+        ElMessage.warning('自动复制失败，请手动全选复制');
+      }
+    };
+    const closePATDialog = () => {
+      if (state.patTokenCopied) { state.patDialogVisible = false; state.rawToken = ''; state.patTokenCopied = false; }
+      else { ElMessage.warning('请先复制令牌并勾选「已保存」确认！'); }
+    };
+    const loadInternalResources = async () => {
+      if (!ensureAuth() || state.internal.loadingResourceOptions) return;
+      state.internal.loadingResourceOptions = true;
+      try {
+        const type = state.internal.resourceType === 'model' ? 'models' : 'datasets';
+        const d = await apiRequest({ path: `/api/v2/storage/${type}`, params: { page: 1, pageSize: 200 } });
+        state.internal.resourceOptions = d.items || d.list || d.data || [];
+      } catch (err) { presentError(err, '加载资源列表失败'); }
+      finally { state.internal.loadingResourceOptions = false; }
+    };
+
+    const addResourceRef = async () => {
+      try { const p = `/internal/v1/storage/resources/${state.internal.resourceId}/ref`; const h = await buildInternalHeaders('POST', p); const d = await apiRequest({ path: p, method: 'POST', useAuth: false, extraHeaders: h }); state.internal.lastResponse = `增加引用成功\n\n${JSON.stringify(d, null, 2)}`; addLog(`引用+1：${state.internal.resourceId}`); ElMessage.success('增加引用成功'); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '增加引用失败'); }
+    };
+    const removeResourceRef = async () => {
+      try { const p = `/internal/v1/storage/resources/${state.internal.resourceId}/ref`; const h = await buildInternalHeaders('DELETE', p); const d = await apiRequest({ path: p, method: 'DELETE', useAuth: false, extraHeaders: h }); state.internal.lastResponse = `减少引用成功\n\n${JSON.stringify(d, null, 2)}`; addLog(`引用-1：${state.internal.resourceId}`); ElMessage.success('减少引用成功'); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '减少引用失败'); }
+    };
+    const setTenantQuota = async () => {
+      try { const p = `/internal/v1/admin/storage/quota/tenant/${state.internal.tenantId}`; const h = await buildInternalHeaders('PUT', p); const totalBytes = Math.round(Number(state.internal.totalQuotaGB) * 1024 * 1024 * 1024); const d = await apiRequest({ path: p, method: 'PUT', useAuth: false, extraHeaders: h, data: { total_quota: totalBytes, alert_threshold: Number(state.internal.alertThreshold) } }); state.internal.lastResponse = `设置配额成功（${state.internal.totalQuotaGB} GB = ${totalBytes} 字节）\n\n${JSON.stringify(d, null, 2)}`; addLog(`设置配额：tenant=${state.internal.tenantId} ${state.internal.totalQuotaGB}GB`); ElMessage.success('配额设置成功'); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '设置配额失败'); }
+    };
+    const listAdminQuotas = async () => {
+      try { const p = '/internal/v1/admin/storage/quota/tenants'; const h = await buildInternalHeaders('GET', p); const d = await apiRequest({ path: p, method: 'GET', useAuth: false, extraHeaders: h, params: { page: 1, pageSize: 50 } }); state.internal.lastResponse = `管理员配额列表\n\n${JSON.stringify(d, null, 2)}`; addLog('查询管理员配额列表'); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '查询管理员配额失败'); }
+    };
+    const getBillingQuota = async () => {
+      try { const p = `/internal/v1/billing/storage/quota/${state.internal.tenantId}`; const h = await buildInternalHeaders('GET', p); const d = await apiRequest({ path: p, method: 'GET', useAuth: false, extraHeaders: h }); state.internal.lastResponse = `单租户用量\n\n${JSON.stringify(d, null, 2)}`; addLog(`查询单租户用量：${state.internal.tenantId}`); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '查询单租户用量失败'); }
+    };
+    const batchBillingQuota = async () => {
+      try { const ids = state.internal.batchTenantIds.split(',').map(v => Number(v.trim())).filter(v => Number.isFinite(v) && v > 0); const p = '/internal/v1/billing/storage/quota/batch'; const h = await buildInternalHeaders('POST', p); const d = await apiRequest({ path: p, method: 'POST', useAuth: false, extraHeaders: h, data: { tenant_ids: ids, page: 1, pageSize: 100 } }); state.internal.lastResponse = `批量用量（${ids.length} 个租户）\n\n${JSON.stringify(d, null, 2)}`; addLog(`批量用量：${ids.length} 个`); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '批量查询用量失败'); }
+    };
+    const listBillingQuota = async () => {
+      try { const p = '/internal/v1/billing/storage/quota'; const h = await buildInternalHeaders('GET', p); const d = await apiRequest({ path: p, method: 'GET', useAuth: false, extraHeaders: h, params: { page: 1, pageSize: 100 } }); state.internal.lastResponse = `全量计费列表\n\n${JSON.stringify(d, null, 2)}`; addLog('全量计费分页列表'); }
+      catch (err) { state.internal.lastResponse = err.message; presentError(err, '查询全量计费失败'); }
+    };
+
+    const runCleanup = async () => {
+      try {
+        const p = '/internal/v1/admin/storage/cleanup';
+        const h = await buildInternalHeaders('POST', p);
+        const body = {
+          dry_run: state.internal.cleanupDryRun,
+          clean_expired_uploads: state.internal.cleanExpiredUploads,
+          clean_orphan_parts: false,
+          older_than_days: state.internal.cleanupOlderThanDays,
+        };
+        const d = await apiRequest({ path: p, method: 'POST', useAuth: false, extraHeaders: h, data: body });
+        const label = state.internal.cleanupDryRun ? '[预演]' : '[真实清理]';
+        state.internal.lastResponse = `${label} 清理结果\n\n${JSON.stringify(d, null, 2)}`;
+        addLog(`${label} 清理完成`);
+        if (!state.internal.cleanupDryRun) ElMessage.success('清理执行完成');
+        else ElMessage.info('预演完成，查看右侧结果');
+      } catch (err) { state.internal.lastResponse = err.message; presentError(err, '数据清理失败'); }
+    };
+
+
+    // 日志中心辅助
+    const logTs = (line) => { const m = line.match(/^\[(\d{1,2}:\d{2}:\d{2}[^\]]*?)\]/); return m ? m[1] : ''; };
+    const logBody = (line) => line.replace(/^\[[^\]]+\]\s*/, '');
+    const logLineClass = (line) => {
+      if (/\[ERR\]/.test(line) || /上传失败/.test(line) || /失败/.test(line) && /\[ERR\]/.test(line)) return 'log-err';
+      if (/\[ERR\]/.test(line)) return 'log-err';
+      if (/\[OK\]/.test(line)) return 'log-ok';
+      if (/⚠/.test(line)) return 'log-warn';
+      if (/\[REQ\]/.test(line)) return 'log-req';
+      return '';
+    };
+    const filteredLogs = computed(() => {
+      let logs = state.logs;
+      if (state.logFilter) logs = logs.filter(l => l.includes(`[${state.logFilter}]`) || (state.logFilter === '⚠' && l.includes('⚠')));
+      if (state.logKeyword) logs = logs.filter(l => l.toLowerCase().includes(state.logKeyword.toLowerCase()));
+      return logs;
+    });
+    const copyText = async (text) => {
+      if (!text) return;
+      // 优先使用 clipboard API（HTTPS / localhost 环境）
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          ElMessage.success('已复制');
+          return;
+        } catch (_) { /* fallback */ }
+      }
+      // 兼容 HTTP 环境：通过隐藏 textarea + execCommand 复制
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        document.execCommand('copy');
+        ElMessage.success('已复制');
+      } catch (_) {
+        ElMessage.warning('复制失败，请手动选中文本复制');
+      }
+      document.body.removeChild(ta);
+    };
+    const copyLogs = async () => { await copyText(filteredLogs.value.join('\n')); };
+
+    const applyPreset = (path, method) => { state.playground.path = path; state.playground.method = method; state.playground.body = ''; };
+    // 追加文件：加载已有资源列表
+    const loadAppendResources = async () => {
+      if (!ensureAuth() || state.appendForm.loadingOptions) return;
+      state.appendForm.loadingOptions = true;
+      try {
+        const type = state.appendForm.resourceType === 'model' ? 'models' : 'datasets';
+        const d = await apiRequest({ path: `/api/v2/storage/${type}`, method: 'GET', params: { page: 1, pageSize: 100 } });
+        state.appendForm.resourceOptions = d.items || d.list || d.data || [];
+      } catch (e) { presentError(e, '加载资源列表失败'); }
+      finally { state.appendForm.loadingOptions = false; }
+    };
+
+    // 追加文件：选择文件
+    const onAppendFileChange = (e) => { state.appendForm.file = e.target.files[0] || null; state.appendForm.files = []; };
+    const onAppendFolderChange = (e) => { state.appendForm.files = Array.from(e.target.files || []); state.appendForm.file = null; };
+
+    // 追加文件：上传单个文件（不创建新仓库）
+    const _appendSingleFile = async (file, resourceId) => {
+      const chunkSize = Math.max(5 * 1024 * 1024, Number(state.appendForm.chunkSizeMB || 50) * 1024 * 1024);
+      const concurrency = Math.max(1, Math.min(16, Number(state.appendForm.concurrency || 4)));
+      const initData = await apiRequest({ path: '/api/v2/storage/upload/init', method: 'POST', data: { resource_id: resourceId, filename: file.name, file_size: file.size, chunk_size: chunkSize, content_type: file.type || 'application/octet-stream' } });
+      applyUploadHints(state.appendUpload, initData, concurrency);
+      const uploadId = initData.upload_id;
+      addLog(`[追加] upload_id=${uploadId}，总片数=${initData.total_parts}`);
+      const uploadedSet = new Set(initData.already_uploaded_parts || []);
+      const pendingParts = [];
+      for (let p = 1; p <= (initData.total_parts || 0); p++) { if (!uploadedSet.has(p)) pendingParts.push(p); }
+      // 流水线模式：每个并发槽独立申请 URL + 上传 + 上报，无批次停顿
+      await runPool(pendingParts, concurrency, async (pn) => {
+        const [partInfo] = await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/part-url`, method: 'POST', data: { part_numbers: [pn] } });
+        const partNumber = pn;
+        const start = (partNumber - 1) * chunkSize;
+        const blob = file.slice(start, Math.min(start + chunkSize, file.size));
+        let lastUIUpdate = 0;
+        const etag = await uploadChunk(partInfo.url, blob, (delta) => {
+          state.appendUpload._sentBytes += delta;
+          state.appendUpload.sentBytes = state.appendUpload._sentBytes;
+          const now = Date.now();
+          if (now - lastUIUpdate >= 120) {
+            lastUIUpdate = now;
+            const elapsed = (now - state.appendUpload._startTime) / 1000;
+            const speed = elapsed > 0.5 ? state.appendUpload._sentBytes / elapsed : 0;
+            state.appendUpload.speed = fmtSpeed(speed);
+            state.appendUpload.eta = fmtETA(state.appendUpload.totalBytes - state.appendUpload._sentBytes, speed);
+            state.appendUpload.currentFilePct = Math.min(99, Math.round(state.appendUpload._sentBytes / file.size * 100));
+            state.appendUpload.progress = Math.min(99, Number(((state.appendUpload._sentBytes / state.appendUpload.totalBytes) * 100).toFixed(1)));
+          }
+        });
+        const reportData = await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/part`, method: 'POST', data: { part_number: partNumber, etag, part_size: blob.size } });
+        state.appendUpload.uploadedCount = reportData.uploaded_count || (state.appendUpload.uploadedCount + 1);
+        state.appendUpload.currentFilePct = Math.min(99, Math.round(state.appendUpload._sentBytes / file.size * 100));
+        state.appendUpload.progress = Math.min(99, Number(((state.appendUpload._sentBytes / state.appendUpload.totalBytes) * 100).toFixed(1)));
+      });
+      await apiRequest({ path: `/api/v2/storage/upload/${uploadId}/complete`, method: 'POST', data: {} });
+      addLog(`[追加] ${file.name} 完成合并`);
+    };
+
+    const startAppendUpload = async () => {
+      if (!ensureAuth()) return;
+      if (!state.appendForm.resourceId) { ElMessage.warning('请先选择要追加到的资源仓库'); return; }
+      const hasFiles = state.appendForm.files && state.appendForm.files.length > 0;
+      const hasSingle = !!state.appendForm.file;
+      if (!hasFiles && !hasSingle) { ElMessage.warning('请先选择要追加的文件'); return; }
+      const files = hasFiles ? state.appendForm.files.filter(f => f.size > 0) : [state.appendForm.file];
+      if (!files.length) { ElMessage.warning('所有文件均为空文件'); return; }
+      state.appendUpload.working = true; state.appendUpload.errorMsg = '';
+      state.appendUpload.progress = 0; state.appendUpload.status = 'uploading';
+      state.appendUpload._startTime = Date.now(); state.appendUpload._sentBytes = 0;
+      resetUploadHints(state.appendUpload, state.appendForm.concurrency);
+      state.appendUpload.totalFiles = files.length; state.appendUpload.doneFiles = 0;
+      state.appendUpload.totalBytes = files.reduce((s, f) => s + f.size, 0); state.appendUpload.sentBytes = 0;
+      state.appendUpload.totalParts = 0; state.appendUpload.uploadedCount = 0;
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          state.appendUpload.currentFileName = f.name; state.appendUpload.currentFileSize = f.size; state.appendUpload.currentFilePct = 0;
+          addLog(`[追加 ${i+1}/${files.length}] ${f.name}`);
+          await _appendSingleFile(f, state.appendForm.resourceId);
+          state.appendUpload.doneFiles = i + 1;
+        }
+        state.appendUpload.status = 'available'; state.appendUpload.progress = 100;
+        state.appendUpload.currentFilePct = 100; state.appendUpload.working = false;
+        ElMessage.success(`追加完成！共 ${files.length} 个文件`);
+        addLog(`[追加] 全部完成，resource_id=${state.appendForm.resourceId}`);
+      } catch (err) {
+        state.appendUpload.errorMsg = err.message || '追加上传失败';
+        state.appendUpload.status = 'failed'; state.appendUpload.working = false;
+        presentError(err, '追加上传失败', '请检查目标仓库、文件格式和上传任务状态。');
+      }
+    };
+
+    const resetAppendForm = () => {
+      state.appendForm.resourceId = ''; state.appendForm.file = null; state.appendForm.files = [];
+      state.appendUpload = { working: false, uploadId: '', status: 'idle', progress: 0, uploadedCount: 0, totalParts: 0, errorMsg: '', speed: '', eta: '', recommendedConcurrency: 0, maxPartURLBatch: 0, effectiveConcurrency: 4, effectivePartURLBatch: 20, totalFiles: 0, doneFiles: 0, currentFileName: '', currentFileSize: 0, currentFilePct: 0, totalBytes: 0, sentBytes: 0, _startTime: 0, _sentBytes: 0 };
+    };
+
+    const runPlayground = async () => {
+      try {
+        const payload = state.playground.body && state.playground.body.trim() ? safeJsonParse(state.playground.body) : undefined;
+        const d = await apiRequest({ path: state.playground.path, method: state.playground.method, data: payload, useAuth: state.playground.useAuth, extraHeadersText: state.playground.headers });
+        state.playground.response = JSON.stringify(d, null, 2); ElMessage.success('请求成功');
+      } catch (err) { state.playground.response = err.message || '请求失败'; presentError(err, '调试请求失败'); }
+    };
+
+    // 追加文件：资源类型切换时清空选项
+    watch(() => state.appendForm.resourceType, () => {
+      state.appendForm.resourceOptions = [];
+      state.appendForm.resourceId = '';
+    });
+
+    // 页面加载即恢复偏好与登录态；token 仍在有效期内的话用户无需重新登录。
+    onMounted(() => { restoreAuthSession(); });
+
+    return {
+      state, login, logout, clearLogs, formatBytes, formatGB, fmtTime, isExpired, statusTagType,
+      visibilityText, resetListFilters, queryResources,
+      onFileChange, onFolderChange, loadResources, refreshAll, loadQuota,
+      startUpload, resumeUpload, inspectResumeUpload, clearSavedResumeSession, pollUpload, cancelCurrentUpload, resetUploadForm,
+      showDetail, openEdit, saveEdit, loadDownloadUrls, downloadSingle, removeResource,
+      loadTokens, createPAT, revokePAT, copyToken, closePATDialog, loadInternalResources,
+      addResourceRef, removeResourceRef, setTenantQuota, listAdminQuotas,
+      getBillingQuota, batchBillingQuota, listBillingQuota, runCleanup,
+      applyPreset, runPlayground,
+      resourcePageCount, resourceTableSummary, handleResourcePageChange, handleResourcePageSizeChange,
+      detailFileStatusOptions, detailFilteredFiles, detailPagedFiles, detailSummary, handleDetailPageChange, handleDetailPageSizeChange, detailRowIndex,
+      filteredLogs, logLineClass, logTs, logBody, copyText, copyLogs,
+      logsScrollbarRef,
+      resourceTypeOptions, sourceOptions, resourceStatusOptions, modelTypeOptions, datasetTypeOptions,
+      trainSceneOptions, systemFlagOptions, tokenScopeOptions, httpMethodOptions, logFilterOptions,
+      singleUploadAccept, appendUploadAccept, uploadFileHint,
+      resumeFileReady,
+      resourceColumnOptions, resourceTableMinWidth, hasResourceColumn, resourceTypeLabel,
+      loadAppendResources, onAppendFileChange, onAppendFolderChange, startAppendUpload, resetAppendForm,
+      Search, View, EditPen, Delete, Download, Setting,
+    };
+  },
+});
+
+Object.entries(iconRegistry).forEach(([name, component]) => {
+  app.component(name, component);
+});
+
+app.use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

@@ -279,10 +279,112 @@ func injectStaticHomeBadge(html string) string {
 	}
 
 	style := `<style>
-  .site-home-badge{position:fixed;top:16px;left:16px;z-index:9999;display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;border:1px solid rgba(21,94,239,.14);background:rgba(255,255,255,.95);box-shadow:0 12px 28px rgba(15,23,42,.12);backdrop-filter:blur(10px);color:#0f4dd8;text-decoration:none;font:700 13px/1 "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif}
-  .site-home-badge-mark{width:12px;height:12px;border-radius:999px;background:linear-gradient(135deg,#155eef,#60a5fa);box-shadow:0 0 0 4px rgba(21,94,239,.12)}
-  @media (max-width:760px){.site-home-badge{top:auto;bottom:104px;left:12px;padding:10px 12px}}
-</style>`
+		.site-home-badge {
+			position: fixed;
+			top: 16px;
+			left: 16px;
+			z-index: 9999;
+			display: inline-flex;
+			align-items: center;
+			gap: 10px;
+			padding: 10px 18px;
+			border-radius: 999px;
+			border: 1.5px solid rgba(21,94,239,.18);
+			background: rgba(255,255,255,0.55);
+			box-shadow: 0 12px 28px rgba(15,23,42,.14), 0 1.5px 4px rgba(21,94,239,.08);
+			backdrop-filter: blur(18px) saturate(180%);
+			-webkit-backdrop-filter: blur(18px) saturate(180%);
+			color: #155eef;
+			text-decoration: none;
+			font: 700 14px/1 "Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;
+			transition: box-shadow 0.2s, border-color 0.2s, background 0.2s, top 0.2s, left 0.2s;
+			cursor: grab;
+			user-select: none;
+		}
+		.site-home-badge:active {
+			cursor: grabbing;
+		}
+		.site-home-badge:hover, .site-home-badge:focus {
+			background: rgba(255,255,255,0.75);
+			border-color: #60a5fa;
+			box-shadow: 0 16px 32px rgba(21,94,239,.18), 0 2px 8px rgba(21,94,239,.10);
+		}
+		.site-home-badge-mark {
+			width: 12px;
+			height: 12px;
+			border-radius: 999px;
+			background: linear-gradient(135deg,#155eef,#60a5fa);
+			box-shadow: 0 0 0 4px rgba(21,94,239,.12);
+		}
+		@media (max-width:760px) {
+			.site-home-badge {
+				top: auto;
+				bottom: 104px;
+				left: 12px;
+				padding: 10px 12px;
+			}
+		}
+	</style>
+	<script>
+	// 支持拖动主页按钮，优化为 transform 平滑移动
+	window.addEventListener('DOMContentLoaded', function() {
+		var badge = document.querySelector('.site-home-badge');
+		if (!badge) return;
+		let isDragging = false;
+		let startX, startY, startTop, startLeft, lastX = 16, lastY = 16;
+		// 初始位置
+		 badge.style.transform = "translate(" + lastX + "px, " + lastY + "px)";
+		badge.style.top = '0';
+		badge.style.left = '0';
+		badge.style.right = '';
+		badge.style.bottom = '';
+		badge.addEventListener('mousedown', function(e) {
+			if (e.button !== 0) return;
+			isDragging = true;
+			startX = e.clientX;
+			startY = e.clientY;
+			const matrix = window.getComputedStyle(badge).transform;
+			if (matrix && matrix !== 'none') {
+				const vals = matrix.match(/matrix\(([^)]+)\)/);
+				if (vals) {
+					const arr = vals[1].split(',');
+					lastX = parseFloat(arr[4]);
+					lastY = parseFloat(arr[5]);
+				}
+			}
+			badge.style.transition = 'none';
+			document.body.style.userSelect = 'none';
+		});
+		window.addEventListener('mousemove', function(e) {
+			if (!isDragging) return;
+			let dx = e.clientX - startX;
+			let dy = e.clientY - startY;
+			let newX = lastX + dx;
+			let newY = lastY + dy;
+			// 限制在窗口内
+			newX = Math.max(0, Math.min(window.innerWidth - badge.offsetWidth, newX));
+			newY = Math.max(0, Math.min(window.innerHeight - badge.offsetHeight, newY));
+			 badge.style.transform = "translate(" + newX + "px, " + newY + "px)";
+		});
+		window.addEventListener('mouseup', function(e) {
+			if (isDragging) {
+				// 记录最终位置
+				const matrix = window.getComputedStyle(badge).transform;
+				if (matrix && matrix !== 'none') {
+					const vals = matrix.match(/matrix\(([^)]+)\)/);
+					if (vals) {
+						const arr = vals[1].split(',');
+						lastX = parseFloat(arr[4]);
+						lastY = parseFloat(arr[5]);
+					}
+				}
+				isDragging = false;
+				badge.style.transition = '';
+				document.body.style.userSelect = '';
+			}
+		});
+	});
+	</script>`
 	html = strings.Replace(html, "</head>", style+"\n</head>", 1)
 
 	bodyMarker := strings.Index(strings.ToLower(html), "<body")
