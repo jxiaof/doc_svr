@@ -1,0 +1,1 @@
+go build -o app main.go && nohup ./app > app.log 2>&1 &
