@@ -64,6 +64,7 @@ type WorkspaceNavGroup struct {
 type PageData struct {
 	MetaTitle       string
 	MetaDescription string
+	AssetVersion    string
 	CurrentPath     string
 	Site            Profile
 	AppPages        []PageEntry
@@ -90,6 +91,7 @@ type SiteApp struct {
 	publicFS     fs.FS
 	profile      Profile
 	staticPages  []staticPage
+	assetVersion string
 	generatedAt  string
 	healthStatus fiber.Map
 }
@@ -106,11 +108,12 @@ func NewSiteApp(config Config) (*SiteApp, error) {
 	}
 
 	return &SiteApp{
-		templates:   config.Templates,
-		publicFS:    config.PublicFS,
-		profile:     config.Profile,
-		staticPages: staticPages,
-		generatedAt: time.Now().Format("2006-01-02 15:04 MST"),
+		templates:    config.Templates,
+		publicFS:     config.PublicFS,
+		profile:      config.Profile,
+		staticPages:  staticPages,
+		assetVersion: fmt.Sprintf("%d", time.Now().Unix()),
+		generatedAt:  time.Now().Format("2006-01-02 15:04 MST"),
 		healthStatus: fiber.Map{
 			"status":           "ok",
 			"service":          config.Profile.Name,
@@ -199,19 +202,25 @@ func (app *SiteApp) registerStaticPage(router fiber.Router, page staticPage) err
 	}
 
 	rawHandler := func(c fiber.Ctx) error {
+		setNoCacheHeaders(c)
 		return sendStaticIndex(c, subFS, rawPagePath+"/")
+	}
+
+	rawAssetNoCache := func(c fiber.Ctx) error {
+		setNoCacheHeaders(c)
+		return c.Next()
 	}
 
 	router.Get(page.Path, shellHandler)
 	router.Get(page.Path+"/", shellHandler)
 	router.Get(rawPagePath, rawHandler)
 	router.Get(rawPagePath+"/", rawHandler)
-	router.Use(rawPagePath+"/*", fiberstatic.New("", fiberstatic.Config{
+	router.Use(rawPagePath+"/*", rawAssetNoCache, fiberstatic.New("", fiberstatic.Config{
 		FS:            subFS,
 		Compress:      true,
 		ByteRange:     true,
-		CacheDuration: 24 * time.Hour,
-		MaxAge:        86400,
+		CacheDuration: 0,
+		MaxAge:        0,
 	}))
 	return nil
 }
@@ -223,11 +232,18 @@ func (app *SiteApp) baseData(currentPath string) PageData {
 	}
 
 	return PageData{
+		AssetVersion: app.assetVersion,
 		CurrentPath:  currentPath,
 		Site:         app.profile,
 		AppPages:     appPages,
 		AppPageCount: len(appPages),
 	}
+}
+
+func setNoCacheHeaders(c fiber.Ctx) {
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, max-age=0")
+	c.Set(fiber.HeaderPragma, "no-cache")
+	c.Set(fiber.HeaderExpires, "0")
 }
 
 func (app *SiteApp) homeData() PageData {

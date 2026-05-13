@@ -8,7 +8,7 @@
 				{{ if .AppPages }}
 				{{ range .AppPages }}
 				   <div class="bookshelf-slot">
-					   <a class="shelf-book card card-shadow" href="{{ .Path }}" data-shelf-link aria-label="打开 {{ routeTail .Path }} 页面">
+					   <a class="shelf-book" href="{{ .Path }}" data-shelf-link aria-label="打开 {{ routeTail .Path }} 页面">
 						   <span class="shelf-book-badge">HTML</span>
 						   <span class="shelf-book-route">{{ routeTail .Path }}</span>
 						   <span class="shelf-book-title">{{ .Title }}</span>
@@ -45,55 +45,6 @@
 		</div>
 	</div>
 </section>
-<style>
-/* 卡片风格增强 */
-.card {
-	background: linear-gradient(135deg, #f0f4ff 70%, #e0e7ef 100%);
-	border-radius: 14px;
-	border: 1.5px solid #d1d5db;
-	box-shadow: 0 2px 8px 0 rgba(60,72,88,0.08), 0 1.5px 4px 0 rgba(60,72,88,0.06);
-	transition: box-shadow 0.2s, border-color 0.2s;
-	position: relative;
-	overflow: hidden;
-}
-.card-shadow:hover, .card-shadow:focus {
-	box-shadow: 0 4px 16px 0 rgba(60,72,88,0.16), 0 3px 8px 0 rgba(60,72,88,0.12);
-	border-color: #a5b4fc;
-}
-.shelf-book.card {
-	padding: 18px 16px 14px 16px;
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	min-height: 120px;
-}
-.shelf-book-badge {
-	background: #1417d7;
-	color: #fff;
-	border-radius: 6px;
-	padding: 2px 10px;
-	font-size: 12px;
-	font-weight: 600;
-	align-self: flex-start;
-	margin-bottom: 2px;
-}
-.shelf-book-route {
-	color: #64748b;
-	font-size: 13px;
-	font-weight: 500;
-}
-.shelf-book-title {
-	color: #1e293b;
-	font-size: 17px;
-	font-weight: 700;
-	margin-top: 2px;
-}
-.shelf-book-meta {
-	color: #94a3b8;
-	font-size: 12px;
-	margin-top: auto;
-}
-</style>
 <script>
 	(function() {
 		const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");

@@ -139,12 +139,18 @@ func main() {
 	app.Get("/favicon.svg", func(c fiber.Ctx) error {
 		return c.Redirect().To("/assets/favicon.svg")
 	})
+	app.Use("/assets", func(c fiber.Ctx) error {
+		c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, max-age=0")
+		c.Set(fiber.HeaderPragma, "no-cache")
+		c.Set(fiber.HeaderExpires, "0")
+		return c.Next()
+	})
 	app.Use("/assets", fiberstatic.New("", fiberstatic.Config{
 		FS:            assetsFS,
 		Compress:      true,
 		ByteRange:     true,
-		CacheDuration: 24 * time.Hour,
-		MaxAge:        86400,
+		CacheDuration: 0,
+		MaxAge:        0,
 	}))
 
 	if err := siteApp.Register(app); err != nil {

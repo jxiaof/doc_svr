@@ -5,9 +5,9 @@
 	<button class="workspace-backdrop" type="button" aria-label="关闭导航" data-workspace-backdrop></button>
 	<aside class="workspace-sidebar panel-glass" id="workspace-sidebar" data-workspace-sidebar>
 		<div class="workspace-sidebar-head">
-			<div class="workspace-sidebar-title-block">
+			<!-- <div class="workspace-sidebar-title-block">
 				<h1 class="workspace-title">页面导航</h1>
-			</div>
+			</div> -->
 			<button class="workspace-sidebar-close" type="button" data-workspace-close aria-controls="workspace-sidebar" aria-expanded="true" aria-label="收起导航">
 				<span class="workspace-toggle-icon is-chevron" aria-hidden="true"></span>
 			</button>
@@ -49,20 +49,31 @@
 			<div class="workspace-toolbar-left">
 				<button class="workspace-nav-toggle" type="button" data-workspace-toggle aria-controls="workspace-sidebar" aria-expanded="true" aria-label="切换导航">
 					<span class="workspace-toggle-icon is-menu" aria-hidden="true"></span>
-					<span class="workspace-nav-toggle-label">导航</span>
+					<!-- <span class="workspace-nav-toggle-label">导航</span> -->
 				</button>
 				<div class="workspace-breadcrumbs" aria-label="面包屑">
-					{{ range .Breadcrumbs }}
-					{{ if .Current }}
-					<span class="workspace-breadcrumb is-current" aria-current="page">{{ .Label }}</span>
+					{{ range $index, $crumb := .Breadcrumbs }}
+					{{ if $crumb.Current }}
+					<span class="workspace-breadcrumb is-current" aria-current="page">{{ $crumb.Label }}</span>
 					{{ else }}
-						<a class="workspace-breadcrumb" href="{{ .Path }}" data-workspace-link>{{ .Label }}</a>
+						<a class="workspace-breadcrumb{{ if or (eq $index 0) (eq $index 1) }} is-icon-button{{ end }}" href="{{ $crumb.Path }}" data-workspace-link aria-label="{{ $crumb.Label }}" title="{{ $crumb.Label }}">
+							{{ if eq $index 0 }}
+							<span class="workspace-breadcrumb-icon is-home" aria-hidden="true"></span>
+							{{ else if eq $index 1 }}
+							<span class="workspace-breadcrumb-icon is-pages" aria-hidden="true"></span>
+							{{ else }}
+							{{ $crumb.Label }}
+							{{ end }}
+						</a>
 					{{ end }}
 					{{ end }}
 				</div>
 			</div>
 			<div class="workspace-toolbar-actions">
-				<a class="workspace-raw-link" href="{{ .RawPagePath }}" target="_blank" rel="noreferrer">新窗口打开原页面</a>
+				<a class="workspace-raw-link" href="{{ .RawPagePath }}?v={{ .AssetVersion }}" target="_blank" rel="noreferrer" aria-label="新窗口打开原页面" title="新窗口打开原页面">
+					<span class="workspace-raw-link-icon is-external" aria-hidden="true"></span>
+					<span class="workspace-raw-link-text">新窗口打开原页面</span>
+				</a>
 			</div>
 		</div>
 
@@ -72,7 +83,7 @@
 					class="workspace-iframe"
 					data-workspace-iframe
 					title="{{ .CurrentPage.Title }}"
-					src="{{ .RawPagePath }}"
+					src="{{ .RawPagePath }}?v={{ .AssetVersion }}"
 					loading="lazy"
 					referrerpolicy="strict-origin-when-cross-origin">
 				</iframe>
@@ -143,14 +154,19 @@
 				return;
 			}
 
-			const shellStyles = window.getComputedStyle(shell);
 			const stage = shell.querySelector('.workspace-stage');
-			const stageStyles = stage ? window.getComputedStyle(stage) : null;
+			if (!stage) {
+				return;
+			}
+
+			const shellStyles = window.getComputedStyle(shell);
+			const stageStyles = window.getComputedStyle(stage);
 			const rowGap = stageStyles ? parseFloat(stageStyles.rowGap || stageStyles.gap || '10') : 10;
-			const bottomPadding = parseFloat(shellStyles.paddingBottom || '0');
-			const toolbarBottom = toolbar.getBoundingClientRect().bottom;
 			const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-			const availableHeight = viewportHeight - toolbarBottom - rowGap - bottomPadding;
+			const stageHeight = Math.max(stage.clientHeight - toolbar.offsetHeight - rowGap, 0);
+			const bottomPadding = parseFloat(shellStyles.paddingBottom || '0');
+			const maxHeight = Math.max(viewportHeight - bottomPadding - 16, 0);
+			const availableHeight = Math.min(stageHeight || maxHeight, maxHeight);
 			const minimumHeight = mobileQuery.matches ? Math.round(viewportHeight * 0.62) : Math.round(viewportHeight * 0.72);
 			frame.style.setProperty('--workspace-frame-height', Math.max(availableHeight, minimumHeight) + 'px');
 		}
