@@ -250,6 +250,8 @@ func (app *SiteApp) homeData() PageData {
 	data := app.baseData("/")
 	data.MetaTitle = app.profile.Name + " | 已注册页面入口"
 	data.MetaDescription = app.profile.Description
+	data.BodyClass = "home-mode"
+	data.ShellClass = "page-shell-home"
 	return data
 }
 

@@ -1,7 +1,42 @@
-{{ define "home" }}
-{{ template "site_head" . }}
-<section class="home-library" style="border-radius: 18px; box-shadow: none; overflow: hidden;">
-		<div class="bookshelf-frame" id="registered-pages" style="border-radius: 18px; box-shadow: none; overflow: hidden;">
+
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Docs | 已注册页面入口</title>
+	<meta name="description" content="自动转发本地服务 · 统一入口 · 便捷访问">
+	<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v=1778752033">
+	<link rel="stylesheet" href="/assets/site.css?v=1778752033">
+</head>
+<body class="home-mode">
+	<div class="page-shell page-shell-home">
+		
+		<header class="site-header">
+			<a class="brand-block brand-home" href="/">
+				<span class="brand">Docs</span>
+			</a>
+			<div class="site-header-tools">
+				<label class="site-search" aria-label="搜索页面入口" data-home-search-shell>
+					<span class="site-search-icon" aria-hidden="true"></span>
+					<input class="site-search-input" type="search" placeholder="搜索路由或页面名称" autocomplete="off" spellcheck="false" data-home-search-input>
+					<button class="site-search-clear" type="button" aria-label="清空搜索" data-home-search-clear hidden>
+						<span class="site-search-clear-icon" aria-hidden="true"></span>
+					</button>
+				</label>
+			</div>
+			<div class="site-header-tools">
+				<button class="theme-toggle" type="button" aria-label="切换深色/浅色模式" data-theme-toggle title="切换主题">
+					<span class="theme-toggle-icon" aria-hidden="true"></span>
+				</button>
+			</div>
+		</header>
+		
+		<main class="page-main">
+
+<section class="home-library">
+		<div class="bookshelf-frame" id="registered-pages">
 			<div class="bookshelf-topbar">
 				<div class="bookshelf-view-switch" role="group" aria-label="切换展示方式">
 					<button class="view-toggle is-active" type="button" data-view-mode="grid" aria-pressed="true" title="卡片视图">
@@ -13,21 +48,39 @@
 						<span class="view-toggle-label">列表</span>
 					</button>
 				</div>
-				<span class="header-pill">已注册 {{ .AppPageCount }} 个页面</span>
+				<span class="header-pill">已注册 3 个页面</span>
 			</div>
 			<div class="bookshelf-grid" data-bookshelf-grid data-view="grid">
-				{{ if .AppPages }}
-				{{ range .AppPages }}
-				   <div class="bookshelf-slot" data-search-target data-search-text="{{ routeTail .Path }} {{ .Title }} {{ .Path }}" data-search-route="{{ routeTail .Path }}" data-search-title="{{ .Title }}">
-					   <a class="shelf-book" href="{{ .Path }}" data-shelf-link aria-label="打开 {{ routeTail .Path }} 页面">
+				
+				
+				   <div class="bookshelf-slot" data-search-target data-search-text="benchmarks Benchmarks /benchmarks" data-search-route="benchmarks" data-search-title="Benchmarks">
+					   <a class="shelf-book" href="/benchmarks" data-shelf-link aria-label="打开 benchmarks 页面">
 						   <span class="shelf-book-badge">HTML</span>
-						   <span class="shelf-book-route">{{ routeTail .Path }}</span>
-						   <!-- <span class="shelf-book-title">{{ .Title }}</span> -->
-						   <span class="shelf-book-meta">{{ .Path }}</span>
+						   <span class="shelf-book-route">benchmarks</span>
+						   
+						   <span class="shelf-book-meta">/benchmarks</span>
 					   </a>
 				   </div>
-				{{ end }}
-				{{ range shelfPadding (len .AppPages) }}
+				
+				   <div class="bookshelf-slot" data-search-target data-search-text="notify Notify /notify" data-search-route="notify" data-search-title="Notify">
+					   <a class="shelf-book" href="/notify" data-shelf-link aria-label="打开 notify 页面">
+						   <span class="shelf-book-badge">HTML</span>
+						   <span class="shelf-book-route">notify</span>
+						   
+						   <span class="shelf-book-meta">/notify</span>
+					   </a>
+				   </div>
+				
+				   <div class="bookshelf-slot" data-search-target data-search-text="storage Storage /storage" data-search-route="storage" data-search-title="Storage">
+					   <a class="shelf-book" href="/storage" data-shelf-link aria-label="打开 storage 页面">
+						   <span class="shelf-book-badge">HTML</span>
+						   <span class="shelf-book-route">storage</span>
+						   
+						   <span class="shelf-book-meta">/storage</span>
+					   </a>
+				   </div>
+				
+				
 				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
 					<div class="shelf-book shelf-book-empty">
 						<span class="shelf-book-entry" aria-hidden="true">
@@ -37,32 +90,95 @@
 						<span class="shelf-book-title">待新增</span>
 					</div>
 				</div>
-				{{ end }}
-				{{ else }}
-				{{ range shelfPadding 0 }}
-				<div class="bookshelf-slot is-placeholder">
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
 					<div class="shelf-book shelf-book-empty">
 						<span class="shelf-book-entry" aria-hidden="true">
 							<span class="shelf-book-entry-icon is-placeholder"></span>
 						</span>
 						<span class="shelf-book-badge">Empty</span>
-						<span class="shelf-book-route">待注册</span>
 						<span class="shelf-book-title">待新增</span>
 					</div>
 				</div>
-				{{ end }}
-				{{ end }}
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				<div class="bookshelf-slot is-placeholder" aria-hidden="true">
+					<div class="shelf-book shelf-book-empty">
+						<span class="shelf-book-entry" aria-hidden="true">
+							<span class="shelf-book-entry-icon is-placeholder"></span>
+						</span>
+						<span class="shelf-book-badge">Empty</span>
+						<span class="shelf-book-title">待新增</span>
+					</div>
+				</div>
+				
+				
 			</div>
-			{{ if not .AppPages }}
-			<div class="library-empty" role="status">
-				<p>当前还没有注册页面。</p>
-			</div>
-			{{ end }}
+			
 		</div>
 </section>
 <script>
 	(function() {
-		// Theme Management
+		
 		const themeToggle = document.querySelector("[data-theme-toggle]");
 		const storageThemeKey = "doc-svr-theme";
 		const storageViewKey = "doc-svr-home-view";
@@ -85,7 +201,7 @@
 			try {
 				localStorage.setItem(storageThemeKey, theme);
 			} catch (error) {
-				// ignore storage failures
+				
 			}
 		}
 		
@@ -99,7 +215,7 @@
 			themeToggle.addEventListener("click", toggleTheme);
 		}
 		
-		// Listen for system theme changes
+		
 		window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
 			const savedTheme = localStorage.getItem(storageThemeKey);
 			if (!savedTheme) {
@@ -109,7 +225,7 @@
 		
 		initTheme();
 		
-		// Home Library View Management
+		
 		const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 		const root = document.querySelector(".home-library");
 		const grid = document.querySelector("[data-bookshelf-grid]");
@@ -204,7 +320,7 @@
 			try {
 				window.localStorage.setItem(storageViewKey, mode);
 			} catch (error) {
-				// ignore storage failures
+				
 			}
 			updateSearchResults();
 		}
@@ -215,7 +331,7 @@
 				applyView(savedView);
 			}
 		} catch (error) {
-			// ignore storage failures
+			
 		}
 
 		toggleButtons.forEach((button) => {
@@ -287,5 +403,17 @@
 		});
 	})();
 </script>
-{{ template "site_footer" . }}
-{{ end }}
+
+		</main>
+		
+		<footer class="site-footer">
+					<div class="footer-inner">
+						<div class="footer-title">Docs</div>
+						<div class="footer-desc">自动转发本地服务 · 统一入口 · 便捷访问</div>
+					</div>
+				</footer>
+		
+	</div>
+</body>
+</html>
+

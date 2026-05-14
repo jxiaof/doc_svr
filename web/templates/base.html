@@ -13,13 +13,24 @@
 	<div class="page-shell{{ if .ShellClass }} {{ .ShellClass }}{{ end }}">
 		{{ if not .HideHeader }}
 		<header class="site-header">
-			<a class="brand-block brand-home" href="/">
-				<span class="brand">{{ .Site.Name }}</span>
-				<span class="brand-copy">{{ .Site.Tagline }}</span>
-			</a>
-			<div class="site-header-meta" aria-label="站点状态">
-				<span class="header-pill">已注册 {{ .AppPageCount }} 个页面</span>
-				<span class="header-pill">自动路由已启用</span>
+			<div class="site-header-tools" style="flex:1; justify-content:flex-start;">
+				<a class="brand-block brand-home" href="/">
+					<span class="brand">{{ .Site.Name }}</span>
+				</a>
+			</div>
+			<div class="site-header-tools" style="flex:2; justify-content:center;">
+				<label class="site-search" aria-label="搜索页面入口" data-home-search-shell>
+					<span class="site-search-icon" aria-hidden="true"></span>
+					<input class="site-search-input" type="search" placeholder="搜索路由或页面名称" autocomplete="off" spellcheck="false" data-home-search-input>
+					<button class="site-search-clear" type="button" aria-label="清空搜索" data-home-search-clear hidden>
+						<span class="site-search-clear-icon" aria-hidden="true"></span>
+					</button>
+				</label>
+			</div>
+			<div class="site-header-tools" style="flex:1; justify-content:flex-end;">
+				<button class="theme-toggle" type="button" aria-label="切换深色/浅色模式" data-theme-toggle title="切换主题">
+					<span class="theme-toggle-icon" aria-hidden="true"></span>
+				</button>
 			</div>
 		</header>
 		{{ end }}

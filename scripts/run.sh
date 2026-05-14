@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="${APP_NAME:-doc-svr}"
-PORT="${PORT:-4000}"
+PORT="${PORT:-3000}"
 LOG_FILE="${LOG_FILE:-$ROOT_DIR/bin/${APP_NAME}.log}"
 
 mkdir -p "$ROOT_DIR/bin"
